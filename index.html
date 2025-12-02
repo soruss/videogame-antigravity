@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vite + React + TS</title>
+  <script>
+    window.onerror = function (message, source, lineno, colno, error) {
+      const div = document.createElement('div');
+      div.style.position = 'fixed';
+      div.style.top = '0';
+      div.style.left = '0';
+      div.style.width = '100%';
+      div.style.backgroundColor = 'red';
+      div.style.color = 'white';
+      div.style.padding = '20px';
+      div.style.zIndex = '999999';
+      div.innerText = 'Global Error: ' + message + '\nSource: ' + source + ':' + lineno + ':' + colno + '\nStack: ' + (error ? error.stack : '');
+      document.body.appendChild(div);
+    };
+  </script>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>
