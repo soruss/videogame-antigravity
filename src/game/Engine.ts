@@ -45,6 +45,7 @@ export class Engine {
     private viewH: number;
     private zoom: number = 1; // Default Zoom
     public isMobile: boolean = false; // Mobile Detection
+    private touchShootTarget: { x: number, y: number } | null = null; // For Mobile Auto-Fire
     private animationId: number | null = null;
 
     // Stopwatch
@@ -125,6 +126,14 @@ export class Engine {
             this.input.joystick = null;
         } else {
             this.input.joystick = { x, y };
+        }
+    }
+
+    public setTouchShootTarget(x: number | null, y: number | null) {
+        if (x === null || y === null) {
+            this.touchShootTarget = null;
+        } else {
+            this.touchShootTarget = { x, y };
         }
     }
 
@@ -320,6 +329,29 @@ export class Engine {
         // Player Shooting
         // Player Shooting
         if (this.input.mouseDown) {
+            const newBullets = this.player.shoot();
+            if (newBullets) {
+                this.bullets.push(...newBullets);
+            }
+        }
+
+        // Mobile Auto-Fire
+        if (this.touchShootTarget) {
+            // Calculate world position from screen tap (Account for Zoom and Canvas Offset)
+            const rect = this.canvas.getBoundingClientRect();
+            const canvasX = this.touchShootTarget.x - rect.left;
+            const canvasY = this.touchShootTarget.y - rect.top;
+
+            // Apply Zoom and Camera
+            const worldX = (canvasX / this.zoom) + this.camera.x;
+            const worldY = (canvasY / this.zoom) + this.camera.y;
+
+            // Aim at tap
+            const dx = worldX - this.player.position.x;
+            const dy = worldY - this.player.position.y;
+            this.player.rotation = Math.atan2(dy, dx);
+
+            // Shoot
             const newBullets = this.player.shoot();
             if (newBullets) {
                 this.bullets.push(...newBullets);

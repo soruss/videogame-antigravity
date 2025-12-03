@@ -169,18 +169,31 @@ function App() {
     }
   };
 
-  const handleCanvasTouch = (e: React.TouchEvent) => {
+  const handleCanvasTouchStart = (e: React.TouchEvent) => {
     if (engineRef.current && e.changedTouches.length > 0) {
-      // Iterate through all changed touches
       for (let i = 0; i < e.changedTouches.length; i++) {
         const touch = e.changedTouches[i];
-
-        // Ensure the target is actually the canvas (and not a UI element bubbling up, though stopPropagation should handle that)
-        // We can also check if the touch started on the canvas.
         if ((touch.target as HTMLElement).tagName === 'CANVAS') {
-          engineRef.current.handleTouchShoot(touch.clientX, touch.clientY);
+          engineRef.current.setTouchShootTarget(touch.clientX, touch.clientY);
         }
       }
+    }
+  };
+
+  const handleCanvasTouchMove = (e: React.TouchEvent) => {
+    if (engineRef.current && e.changedTouches.length > 0) {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        if ((touch.target as HTMLElement).tagName === 'CANVAS') {
+          engineRef.current.setTouchShootTarget(touch.clientX, touch.clientY);
+        }
+      }
+    }
+  };
+
+  const handleCanvasTouchEnd = () => {
+    if (engineRef.current) {
+      engineRef.current.setTouchShootTarget(null, null);
     }
   };
 
@@ -207,7 +220,9 @@ function App() {
       <canvas
         ref={canvasRef}
         className="block w-full h-full"
-        onTouchStart={handleCanvasTouch}
+        onTouchStart={handleCanvasTouchStart}
+        onTouchMove={handleCanvasTouchMove}
+        onTouchEnd={handleCanvasTouchEnd}
       />
 
       {/* HUD Overlay */}
