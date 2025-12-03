@@ -81,7 +81,7 @@ const VirtualJoystick = ({ onMove }: { onMove: (x: number, y: number) => void })
   return (
     <div
       ref={containerRef}
-      className="relative w-32 h-32 rounded-full bg-red-600/50 border-4 border-white backdrop-blur-sm touch-none flex items-center justify-center"
+      className="relative w-[108px] h-[108px] rounded-full bg-white/10 border-2 border-white/30 backdrop-blur-sm touch-none flex items-center justify-center"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
@@ -89,14 +89,10 @@ const VirtualJoystick = ({ onMove }: { onMove: (x: number, y: number) => void })
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
       onMouseLeave={onMouseLeave}
-      style={{ boxShadow: '0 0 30px rgba(255, 0, 0, 0.5)' }}
     >
-      <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-white font-black text-xs tracking-widest bg-black/50 px-2 py-1 rounded whitespace-nowrap">
-        JOYSTICK V4 (CENTERED)
-      </div>
       <div
         ref={stickRef}
-        className="absolute w-12 h-12 rounded-full bg-yellow-400 border-2 border-black shadow-[0_0_15px_rgba(250,204,21,0.8)] pointer-events-none transition-transform duration-75"
+        className="absolute w-10 h-10 rounded-full bg-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.6)] pointer-events-none transition-transform duration-75"
         style={{
           top: '50%',
           left: '50%',
@@ -307,23 +303,18 @@ function App() {
       {gameState !== GameState.GAME_OVER && (
         <>
           {/* Custom Virtual Joystick */}
-          <div className="fixed top-[50%] -translate-y-1/2 left-12 z-[9999]" style={{ pointerEvents: 'auto' }}>
+          <div className="fixed bottom-8 left-8 z-[9999]" style={{ pointerEvents: 'auto' }}>
             <VirtualJoystick onMove={(x, y) => engineRef.current?.setJoystick(x, y)} />
           </div>
 
-          {/* DEBUG: State Indicator */}
-          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] text-white text-2xl font-black bg-black/50 p-4">
-            STATE: {gameState}
-          </div>
-
           {/* Dash Button (Bottom Right) */}
-          <div className="fixed top-[50%] -translate-y-1/2 right-12 z-[9999]" style={{ pointerEvents: 'auto' }}>
+          <div className="fixed bottom-8 right-8 z-[9999]" style={{ pointerEvents: 'auto' }}>
             <button
-              className={`w-24 h-24 rounded-full border-4 flex items-center justify-center transition-all active:scale-95 ${uiState?.dashReady ? 'bg-cyan-500/40 border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.6)]' : 'bg-gray-800/50 border-gray-600 opacity-50'}`}
+              className={`w-[82px] h-[82px] rounded-full border-4 flex items-center justify-center transition-all active:scale-95 ${uiState?.dashReady ? 'bg-cyan-500/40 border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.6)]' : 'bg-gray-800/50 border-gray-600 opacity-50'}`}
               onTouchStart={(e) => { e.stopPropagation(); handleDash(); }}
               onMouseDown={(e) => { e.stopPropagation(); handleDash(); }}
             >
-              <span className="text-white font-black text-lg uppercase tracking-wider">DASH</span>
+              <span className="text-white font-black text-sm uppercase tracking-wider">DASH</span>
             </button>
           </div>
         </>
