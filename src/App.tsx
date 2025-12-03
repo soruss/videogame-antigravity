@@ -221,8 +221,8 @@ function App() {
       {uiState && gameState !== GameState.GAME_OVER && (
         <div className="absolute inset-0 pointer-events-none p-8 flex flex-col justify-between z-10">
 
-          {/* Top Left: Weapon & Ammo - Scaled */}
-          <div className="flex flex-col gap-2 items-start origin-top-left scale-75">
+          {/* Top Left: Weapon & Ammo - Scaled (Hidden on Mobile) */}
+          <div className="hidden md:flex flex-col gap-2 items-start origin-top-left scale-75">
             {uiState.weapon && (
               <div className="flex flex-col bg-slate-900/80 p-4 rounded-lg border border-slate-700/50 backdrop-blur-sm shadow-xl">
                 <span className="text-slate-400 text-xs font-black tracking-widest uppercase mb-1">Weapon</span>
@@ -302,13 +302,13 @@ function App() {
       {/* Mobile Controls (Visible only on touch devices ideally, but showing always for now as requested) */}
       {gameState !== GameState.GAME_OVER && (
         <>
-          {/* Custom Virtual Joystick */}
-          <div className="fixed bottom-8 left-8 z-[9999]" style={{ pointerEvents: 'auto' }}>
+          {/* Custom Virtual Joystick (Hidden on Desktop) */}
+          <div className="fixed bottom-8 left-8 z-[9999] md:hidden" style={{ pointerEvents: 'auto' }}>
             <VirtualJoystick onMove={(x, y) => engineRef.current?.setJoystick(x, y)} />
           </div>
 
-          {/* Dash Button (Bottom Right) */}
-          <div className="fixed bottom-8 right-8 z-[9999]" style={{ pointerEvents: 'auto' }}>
+          {/* Dash Button (Bottom Right) (Hidden on Desktop) */}
+          <div className="fixed bottom-8 right-8 z-[9999] md:hidden" style={{ pointerEvents: 'auto' }}>
             <button
               className={`w-[82px] h-[82px] rounded-full border-4 flex items-center justify-center transition-all active:scale-95 ${uiState?.dashReady ? 'bg-cyan-500/40 border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.6)]' : 'bg-gray-800/50 border-gray-600 opacity-50'}`}
               onTouchStart={(e) => { e.stopPropagation(); handleDash(); }}
@@ -408,8 +408,8 @@ function App() {
         </div>
       </div>
 
-      {/* Players Alive - Fixed & Styled (Below Stopwatch) */}
-      <div style={{
+      {/* Players Alive - Fixed & Styled (Below Stopwatch) - Hidden on Mobile */}
+      <div className="hidden md:block" style={{
         position: 'fixed',
         top: '120px', // Below the Stopwatch box
         right: '24px',
