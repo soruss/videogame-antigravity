@@ -112,6 +112,43 @@ export class Engine {
         };
     }
 
+    public setJoystick(x: number, y: number) {
+        if (x === 0 && y === 0) {
+            this.input.joystick = null;
+        } else {
+            this.input.joystick = { x, y };
+        }
+    }
+
+    public triggerDash() {
+        if (this.player.dash()) {
+            this.spawnDashParticles(this.player);
+        }
+    }
+
+    public handleTouchShoot(clientX: number, clientY: number) {
+        // Calculate world position from screen tap
+        const worldX = clientX + this.camera.x;
+        const worldY = clientY + this.camera.y;
+
+        // Aim at tap
+        const dx = worldX - this.player.position.x;
+        const dy = worldY - this.player.position.y;
+        this.player.rotation = Math.atan2(dy, dx);
+
+        // Shoot
+        const newBullets = this.player.shoot();
+        if (newBullets) {
+            this.bullets.push(...newBullets);
+        }
+    }
+
+    public triggerRestart() {
+        if (this.player.isDead || this.npcs.length === 0) {
+            this.reset();
+        }
+    }
+
     private resize() {
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;

@@ -5,6 +5,104 @@ import './index.css';
 
 import { Analytics } from "@vercel/analytics/react"
 
+// import { Joystick } from 'react-joystick-component';
+
+// Custom Virtual Joystick Component
+const VirtualJoystick = ({ onMove }: { onMove: (x: number, y: number) => void }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const stickRef = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+
+  const handleStart = (clientX: number, clientY: number) => {
+    setActive(true);
+    handleMove(clientX, clientY);
+  };
+
+  const handleMove = (clientX: number, clientY: number) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    const maxDist = rect.width / 2;
+
+    let dx = clientX - centerX;
+    let dy = clientY - centerY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    // Clamp
+    if (dist > maxDist) {
+      dx = (dx / dist) * maxDist;
+      dy = (dy / dist) * maxDist;
+    }
+
+    setPosition({ x: dx, y: dy });
+    onMove(dx / maxDist, -dy / maxDist); // Invert Y for game engine
+  };
+
+  const handleEnd = () => {
+    setActive(false);
+    setPosition({ x: 0, y: 0 });
+    onMove(0, 0);
+  };
+
+  // Touch Handlers
+  const onTouchStart = (e: React.TouchEvent) => {
+    e.stopPropagation(); // Prevent shooting
+    handleStart(e.touches[0].clientX, e.touches[0].clientY);
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    e.stopPropagation();
+    if (active) handleMove(e.touches[0].clientX, e.touches[0].clientY);
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    e.stopPropagation();
+    handleEnd();
+  };
+
+  // Mouse Handlers (for testing)
+  const onMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    handleStart(e.clientX, e.clientY);
+  };
+  const onMouseMove = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (active) handleMove(e.clientX, e.clientY);
+  };
+  const onMouseUp = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    handleEnd();
+  };
+  const onMouseLeave = () => {
+    if (active) handleEnd();
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative w-32 h-32 rounded-full bg-white/10 border-2 border-white/30 backdrop-blur-sm touch-none"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onMouseDown={onMouseDown}
+      onMouseMove={onMouseMove}
+      onMouseUp={onMouseUp}
+      onMouseLeave={onMouseLeave}
+    >
+      <div
+        ref={stickRef}
+        className="absolute w-12 h-12 rounded-full bg-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.6)] pointer-events-none transition-transform duration-75"
+        style={{
+          top: '50%',
+          left: '50%',
+          transform: `translate(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px))`
+        }}
+      />
+    </div>
+  );
+};
+
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<Engine | null>(null);
@@ -52,6 +150,53 @@ function App() {
     };
   }, []);
 
+  // Mobile Handlers
+  // const handleJoystickMove = (event: any) => {
+  //   if (engineRef.current) {
+  //     engineRef.current.setJoystick(event.x, event.y);
+  //   }
+  // };
+
+  // const handleJoystickStop = () => {
+  //   if (engineRef.current) {
+  //     engineRef.current.setJoystick(0, 0);
+  //   }
+  // };
+
+  const handleDash = () => {
+    if (engineRef.current) {
+      engineRef.current.triggerDash();
+    }
+  };
+
+  const handleCanvasTouch = (e: React.TouchEvent) => {
+    // Prevent default to stop scrolling/zooming
+    // e.preventDefault(); // Might block other interactions, test carefully
+
+    if (engineRef.current && e.touches.length > 0) {
+      // Use the first touch that isn't on the joystick/buttons (simplified: just use first touch)
+      // Ideally we filter out touches on UI controls, but for "Tap to Shoot", we can just use the touch coordinates.
+      // However, the joystick also triggers touches. We rely on the fact that the joystick captures its own events?
+      // Actually, tapping the screen anywhere (except controls) should shoot.
+      // Let's assume controls stop propagation or we check target.
+
+      // Simple implementation: Just pass the touch to engine. 
+      // If the user is using the joystick, that's a touch too.
+      // We need to differentiate.
+      // A simple way is to check if the target is the canvas.
+      if ((e.target as HTMLElement).tagName === 'CANVAS') {
+        const touch = e.touches[0];
+        engineRef.current.handleTouchShoot(touch.clientX, touch.clientY);
+      }
+    }
+  };
+
+  const handleRestart = () => {
+    if (engineRef.current) {
+      engineRef.current.triggerRestart();
+    }
+  };
+
   if (error) {
     return (
       <div className="flex items-center justify-center h-screen bg-red-900 text-white font-sans">
@@ -64,9 +209,13 @@ function App() {
   }
 
   return (
-    <div className="relative w-full h-screen bg-black overflow-hidden font-sans select-none">
+    <div className="relative w-full h-screen bg-black overflow-hidden font-sans select-none touch-none">
       <Analytics />
-      <canvas ref={canvasRef} className="block w-full h-full" />
+      <canvas
+        ref={canvasRef}
+        className="block w-full h-full"
+        onTouchStart={handleCanvasTouch}
+      />
 
       {/* HUD Overlay */}
       {uiState && gameState !== GameState.GAME_OVER && (
@@ -150,6 +299,31 @@ function App() {
         </div>
       )}
 
+      {/* Mobile Controls (Visible only on touch devices ideally, but showing always for now as requested) */}
+      {gameState !== GameState.GAME_OVER && (
+        <>
+          {/* Custom Virtual Joystick */}
+          <div className="fixed bottom-12 left-12 z-[9999]" style={{ pointerEvents: 'auto' }}>
+            <VirtualJoystick onMove={(x, y) => engineRef.current?.setJoystick(x, y)} />
+          </div>
+
+          {/* DEBUG: State Indicator */}
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] text-white text-2xl font-black bg-black/50 p-4">
+            STATE: {gameState}
+          </div>
+
+          {/* Dash Button (Bottom Right) */}
+          <div className="fixed bottom-12 right-12 z-[9999]" style={{ pointerEvents: 'auto' }}>
+            <button
+              className={`w-24 h-24 rounded-full border-4 flex items-center justify-center transition-all active:scale-95 ${uiState?.dashReady ? 'bg-cyan-500/40 border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.6)]' : 'bg-gray-800/50 border-gray-600 opacity-50'}`}
+              onTouchStart={(e) => { e.stopPropagation(); handleDash(); }}
+              onMouseDown={(e) => { e.stopPropagation(); handleDash(); }}
+            >
+              <span className="text-white font-black text-lg uppercase tracking-wider">DASH</span>
+            </button>
+          </div>
+        </>
+      )}
 
 
       {/* Game Over / Victory Screen - NUCLEAR OPTION: Inline Styles */}
@@ -190,10 +364,20 @@ function App() {
             fontSize: '2rem',
             fontWeight: 'bold',
             letterSpacing: '0.5em',
-            textShadow: '0 0 20px rgba(255,255,255,0.5)'
+            textShadow: '0 0 20px rgba(255,255,255,0.5)',
+            marginBottom: '2rem'
           }}>
             PRESS <span style={{ color: '#FACC15', fontSize: '2.5rem', margin: '0 10px' }}>R</span> TO RESTART
           </p>
+
+          {/* Mobile Restart Button */}
+          <button
+            onClick={handleRestart}
+            onTouchStart={handleRestart}
+            className="px-8 py-4 bg-white text-black font-black text-xl rounded-full hover:scale-105 active:scale-95 transition-transform shadow-[0_0_30px_rgba(255,255,255,0.4)]"
+          >
+            TAP TO RESTART
+          </button>
         </div>
       )}
 

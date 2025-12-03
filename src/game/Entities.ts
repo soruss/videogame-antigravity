@@ -435,15 +435,24 @@ export class Player {
             // Skip normal movement input while dashing
         }
         // Movement (Player only)
+        // Movement (Player only)
         else if (!this.isNPC && input) {
             this.velocity = { x: 0, y: 0 };
+
+            // Keyboard Input
             if (input.keys['KeyW']) this.velocity.y = -1;
             if (input.keys['KeyS']) this.velocity.y = 1;
             if (input.keys['KeyA']) this.velocity.x = -1;
             if (input.keys['KeyD']) this.velocity.x = 1;
 
-            // Normalize
-            if (this.velocity.x !== 0 || this.velocity.y !== 0) {
+            // Joystick Input (Override Keyboard if active)
+            if (input.joystick) {
+                this.velocity.x = input.joystick.x;
+                this.velocity.y = -input.joystick.y; // Joystick Y is inverted (Up is positive)
+            }
+
+            // Normalize (Only for keyboard, joystick is already normalized usually)
+            if (!input.joystick && (this.velocity.x !== 0 || this.velocity.y !== 0)) {
                 const len = Math.sqrt(this.velocity.x ** 2 + this.velocity.y ** 2);
                 this.velocity.x /= len;
                 this.velocity.y /= len;
@@ -456,9 +465,17 @@ export class Player {
 
             // Aiming (Rotation)
             if (camera) {
-                const dx = input.mouse.x + camera.x - this.position.x;
-                const dy = input.mouse.y + camera.y - this.position.y;
-                this.rotation = Math.atan2(dy, dx);
+                // If using joystick and NOT shooting/aiming with mouse, look in movement direction
+                if (input.joystick && !input.mouseDown) {
+                    if (Math.abs(input.joystick.x) > 0.1 || Math.abs(input.joystick.y) > 0.1) {
+                        this.rotation = Math.atan2(-input.joystick.y, input.joystick.x);
+                    }
+                } else {
+                    // Mouse Aiming
+                    const dx = input.mouse.x + camera.x - this.position.x;
+                    const dy = input.mouse.y + camera.y - this.position.y;
+                    this.rotation = Math.atan2(dy, dx);
+                }
             }
         }
 
