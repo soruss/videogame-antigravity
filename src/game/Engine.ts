@@ -1,5 +1,5 @@
 import { World, TILE_SIZE, TileType } from './World';
-import { Player, Bullet, Loot, WEAPONS, WeaponType, Explosion, Particle, Potion } from './Entities';
+import { Player, Bullet, Loot, WEAPONS, WeaponType, Explosion, Particle, Potion, SwiftHalo } from './Entities';
 import { Input } from './Input';
 
 export const GameState = {
@@ -37,6 +37,7 @@ export class Engine {
     private bullets: Bullet[] = [];
     private loot: Loot[] = [];
     private potions: Potion[] = [];
+    private swiftHalo: SwiftHalo | null = null;
     private explosions: Explosion[] = [];
     private particles: Particle[] = [];
     private input: Input;
@@ -210,6 +211,15 @@ export class Engine {
         }
     }
 
+    private spawnSwiftHalo() {
+        // Spawn in City Center
+        const rect = this.world.cityHouseRect;
+        // Center of the house
+        const x = (rect.x + rect.w / 2) * TILE_SIZE;
+        const y = (rect.y + rect.h / 2) * TILE_SIZE;
+        this.swiftHalo = new SwiftHalo(x, y);
+    }
+
     private spawnNPCs(count: number) {
         for (let i = 0; i < count; i++) {
             // Avoid existing NPCs and Player
@@ -272,6 +282,7 @@ export class Engine {
         this.spawnLoot();
         this.spawnLoot();
         this.spawnPotions();
+        this.spawnSwiftHalo();
         this.spawnNPCs(15);
         this.gameStartTime = performance.now();
         this.gameEndTime = null;
@@ -517,6 +528,32 @@ export class Engine {
         });
         this.potions = this.potions.filter(p => p.active);
 
+        // Swift Halo
+        if (this.swiftHalo && this.swiftHalo.active) {
+            // Check Player
+            const dist = Math.sqrt((this.swiftHalo.position.x - this.player.position.x) ** 2 + (this.swiftHalo.position.y - this.player.position.y) ** 2);
+            if (dist < this.player.radius + this.swiftHalo.radius) {
+                this.swiftHalo.active = false;
+                this.player.hasHalo = true;
+                // Maybe spawn some particles?
+                this.spawnDashParticles(this.player);
+            }
+
+            // Check NPCs (Coincidence pickup)
+            if (this.swiftHalo.active) {
+                this.npcs.forEach(npc => {
+                    if (this.swiftHalo && this.swiftHalo.active) {
+                        const npcDist = Math.sqrt((this.swiftHalo.position.x - npc.position.x) ** 2 + (this.swiftHalo.position.y - npc.position.y) ** 2);
+                        if (npcDist < npc.radius + this.swiftHalo.radius) {
+                            this.swiftHalo.active = false;
+                            npc.hasHalo = true;
+                            this.spawnDashParticles(npc);
+                        }
+                    }
+                });
+            }
+        }
+
         // Particles
         this.particles.forEach(p => p.update(dt));
         this.particles = this.particles.filter(p => p.life > 0);
@@ -625,6 +662,11 @@ export class Engine {
 
         // Potions
         this.potions.forEach(p => p.render(this.ctx, this.camera));
+
+        // Swift Halo
+        if (this.swiftHalo) {
+            this.swiftHalo.render(this.ctx, this.camera);
+        }
 
         // NPCs
         this.npcs.forEach(n => n.render(this.ctx, this.camera));

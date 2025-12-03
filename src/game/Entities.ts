@@ -233,6 +233,7 @@ export class Player {
     public path: Vector2[] = [];
     public pathTimer: number = 0;
     public weaponPickupTime: number = 0; // Track when weapon was picked up
+    public hasHalo: boolean = false; // Swift Halo Effect
 
     constructor(x: number, y: number, isNPC: boolean = false) {
         this.position = { x, y };
@@ -574,6 +575,42 @@ export class Player {
 
         ctx.restore();
 
+        // Swift Halo (Render on top)
+        if (this.hasHalo) {
+            ctx.save();
+            ctx.translate(this.position.x, this.position.y);
+
+            // Halo Ring
+            ctx.strokeStyle = '#FDE047'; // Yellow-400
+            ctx.lineWidth = 3;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#FEF08A'; // Yellow-200
+            ctx.beginPath();
+            ctx.ellipse(0, -25, 12, 4, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Feathers (Simple lines/shapes)
+            ctx.fillStyle = '#FEF9C3'; // Yellow-100
+            // Left Wing
+            ctx.beginPath();
+            ctx.moveTo(-12, -25);
+            ctx.lineTo(-22, -30);
+            ctx.lineTo(-20, -22);
+            ctx.lineTo(-24, -20);
+            ctx.lineTo(-12, -20);
+            ctx.fill();
+            // Right Wing
+            ctx.beginPath();
+            ctx.moveTo(12, -25);
+            ctx.lineTo(22, -30);
+            ctx.lineTo(20, -22);
+            ctx.lineTo(24, -20);
+            ctx.lineTo(12, -20);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
         // Health Bar
         if (this.health < this.maxHealth || this.shield > 0) {
             ctx.save();
@@ -650,6 +687,57 @@ export class Potion {
         ctx.beginPath();
         ctx.arc(-3, 3, 2, 0, Math.PI * 2);
         ctx.fill();
+
+        ctx.restore();
+    }
+}
+
+export class SwiftHalo {
+    public position: Vector2;
+    public radius: number = 20;
+    public active: boolean = true;
+
+    constructor(x: number, y: number) {
+        this.position = { x, y };
+    }
+
+    public render(ctx: CanvasRenderingContext2D, _cameraOffset: Vector2) {
+        if (!this.active) return;
+
+        ctx.save();
+        ctx.translate(this.position.x, this.position.y);
+
+        // Glow
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#FDE047'; // Yellow Glow
+
+        // Halo Ring
+        ctx.strokeStyle = '#FDE047';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 15, 5, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Feathers
+        ctx.fillStyle = '#FEF9C3';
+        // Left
+        ctx.beginPath();
+        ctx.moveTo(-15, 0);
+        ctx.lineTo(-25, -5);
+        ctx.lineTo(-22, 0);
+        ctx.lineTo(-25, 5);
+        ctx.fill();
+        // Right
+        ctx.beginPath();
+        ctx.moveTo(15, 0);
+        ctx.lineTo(25, -5);
+        ctx.lineTo(22, 0);
+        ctx.lineTo(25, 5);
+        ctx.fill();
+
+        // Float Animation (Simple bob)
+        const offset = Math.sin(performance.now() / 200) * 3;
+        ctx.translate(0, offset);
 
         ctx.restore();
     }
