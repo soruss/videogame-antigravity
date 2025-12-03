@@ -307,7 +307,7 @@ function App() {
       {gameState !== GameState.GAME_OVER && (
         <>
           {/* Custom Virtual Joystick */}
-          <div className="fixed bottom-12 left-12 z-[9999]" style={{ pointerEvents: 'auto' }}>
+          <div className="fixed bottom-32 left-12 z-[9999]" style={{ pointerEvents: 'auto' }}>
             <VirtualJoystick onMove={(x, y) => engineRef.current?.setJoystick(x, y)} />
           </div>
 
@@ -317,7 +317,7 @@ function App() {
           </div>
 
           {/* Dash Button (Bottom Right) */}
-          <div className="fixed bottom-12 right-12 z-[9999]" style={{ pointerEvents: 'auto' }}>
+          <div className="fixed bottom-32 right-12 z-[9999]" style={{ pointerEvents: 'auto' }}>
             <button
               className={`w-24 h-24 rounded-full border-4 flex items-center justify-center transition-all active:scale-95 ${uiState?.dashReady ? 'bg-cyan-500/40 border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.6)]' : 'bg-gray-800/50 border-gray-600 opacity-50'}`}
               onTouchStart={(e) => { e.stopPropagation(); handleDash(); }}
