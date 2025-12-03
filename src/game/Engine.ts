@@ -129,9 +129,9 @@ export class Engine {
     }
 
     public handleTouchShoot(clientX: number, clientY: number) {
-        // Calculate world position from screen tap
-        const worldX = clientX + this.camera.x;
-        const worldY = clientY + this.camera.y;
+        // Calculate world position from screen tap (Account for Zoom)
+        const worldX = (clientX / this.zoom) + this.camera.x;
+        const worldY = (clientY / this.zoom) + this.camera.y;
 
         // Aim at tap
         const dx = worldX - this.player.position.x;
