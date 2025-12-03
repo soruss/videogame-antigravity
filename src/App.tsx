@@ -194,10 +194,42 @@ function App() {
         </div>
       )}
 
-      {/* Players Alive - Fixed & Styled */}
+      {/* Stopwatch - Fixed & Styled (Top Right) */}
       <div style={{
         position: 'fixed',
         top: '24px',
+        right: '24px',
+        zIndex: 9999,
+        pointerEvents: 'none'
+      }}>
+        <div className="bg-slate-900/80 p-4 rounded-lg border border-slate-700/50 backdrop-blur-sm shadow-xl flex flex-col items-center"
+          style={{
+            width: '160px',
+            minWidth: '160px',
+            maxWidth: '160px',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden'
+          }}>
+          <span className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">TIME</span>
+          <span className="text-xl font-black text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)] font-mono tabular-nums">
+            {
+              (() => {
+                if (!uiState) return '00:00.00';
+                const ms = Math.floor(uiState.elapsedTime);
+                const minutes = Math.floor(ms / 60000);
+                const seconds = Math.floor((ms % 60000) / 1000);
+                const centiseconds = Math.floor((ms % 1000) / 10);
+                return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
+              })()
+            }
+          </span>
+        </div>
+      </div>
+
+      {/* Players Alive - Fixed & Styled (Below Stopwatch) */}
+      <div style={{
+        position: 'fixed',
+        top: '120px', // Below the Stopwatch box
         right: '24px',
         zIndex: 9999,
         pointerEvents: 'none'

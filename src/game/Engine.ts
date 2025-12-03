@@ -22,6 +22,7 @@ export interface UIState {
     dashCooldown: number;
     dashReady: boolean;
     aliveCount: number;
+    elapsedTime: number;
 }
 
 
@@ -42,6 +43,10 @@ export class Engine {
     private viewW: number;
     private viewH: number;
     private animationId: number | null = null;
+
+    // Stopwatch
+    private gameStartTime: number = 0;
+    private gameEndTime: number | null = null;
 
     public onGameStateChange?: (state: GameState) => void;
     public onWinner?: (winner: string) => void;
@@ -75,6 +80,8 @@ export class Engine {
     public start() {
         if (!this.animationId) {
             this.lastTime = performance.now();
+            this.gameStartTime = this.lastTime;
+            this.gameEndTime = null;
             this.loop(this.lastTime);
             if (this.onGameStateChange) this.onGameStateChange(GameState.PLAYING);
         }
@@ -100,7 +107,8 @@ export class Engine {
             isReloading: this.player.isReloading,
             dashCooldown: this.player.dashCooldown,
             dashReady: dashReady,
-            aliveCount: this.npcs.length + (this.player.isDead ? 0 : 1)
+            aliveCount: this.npcs.length + (this.player.isDead ? 0 : 1),
+            elapsedTime: this.gameEndTime ? (this.gameEndTime - this.gameStartTime) : (performance.now() - this.gameStartTime)
         };
     }
 
@@ -181,7 +189,10 @@ export class Engine {
         this.explosions = [];
         this.particles = [];
         this.spawnLoot();
+        this.spawnLoot();
         this.spawnNPCs(15);
+        this.gameStartTime = performance.now();
+        this.gameEndTime = null;
         if (this.onGameStateChange) this.onGameStateChange(GameState.PLAYING);
     }
 
@@ -386,6 +397,7 @@ export class Engine {
 
         // Check Victory
         if (this.npcs.length === 0 && !this.player.isDead) {
+            if (!this.gameEndTime) this.gameEndTime = performance.now();
             if (this.onWinner) this.onWinner('Player');
             if (this.onGameStateChange) this.onGameStateChange(GameState.GAME_OVER);
         }
@@ -432,6 +444,7 @@ export class Engine {
                 }
             } else if (!entity.isNPC) {
                 // Player Died
+                if (!this.gameEndTime) this.gameEndTime = performance.now();
                 if (this.onGameStateChange) this.onGameStateChange(GameState.GAME_OVER);
                 if (this.onWinner) this.onWinner('GAME OVER');
             }
