@@ -307,7 +307,9 @@ function App() {
               onTouchStart={(e) => { e.stopPropagation(); handleDash(); }}
               onMouseDown={(e) => { e.stopPropagation(); handleDash(); }}
             >
-              <span className="text-white font-black text-sm uppercase tracking-wider">DASH</span>
+              <span className="text-white font-black text-sm uppercase tracking-wider">
+                {uiState?.dashReady ? 'DASH' : (uiState?.dashTimeRemaining?.toFixed(1) + 's')}
+              </span>
             </button>
           </div>
         </>

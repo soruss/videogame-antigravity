@@ -27,11 +27,11 @@ export interface WeaponStats {
 }
 
 export const WEAPONS: Record<WeaponType, WeaponStats> = {
-    [WeaponType.Pistol]: { type: WeaponType.Pistol, fireRate: 0.4, damage: 20, speed: 800, spread: 0.05, count: 1, color: '#CCCCCC', magSize: 12, reloadTime: 1.5, wallDamage: 0 },
-    [WeaponType.AssaultRifle]: { type: WeaponType.AssaultRifle, fireRate: 0.1, damage: 15, speed: 900, spread: 0.1, count: 1, color: '#4444FF', magSize: 20, reloadTime: 2.0, wallDamage: 1 },
-    [WeaponType.Shotgun]: { type: WeaponType.Shotgun, fireRate: 1.0, damage: 20, speed: 600, spread: 0.3, count: 5, color: '#FF4444', magSize: 8, reloadTime: 3.0, wallDamage: 2 },
-    [WeaponType.Sniper]: { type: WeaponType.Sniper, fireRate: 1.5, damage: 80, speed: 1500, spread: 0.0, count: 1, color: '#44FF44', magSize: 5, reloadTime: 4.0, wallDamage: 5 },
-    [WeaponType.RocketLauncher]: { type: WeaponType.RocketLauncher, fireRate: 2.0, damage: 100, speed: 500, spread: 0.05, count: 1, isRocket: true, color: '#FFAA00', magSize: 3, reloadTime: 3.5, wallDamage: 5 }
+    [WeaponType.Pistol]: { type: WeaponType.Pistol, fireRate: 0.4, damage: 20, speed: 800, spread: 0.05, count: 1, color: '#CCCCCC', magSize: 12, reloadTime: 0.75, wallDamage: 0 },
+    [WeaponType.AssaultRifle]: { type: WeaponType.AssaultRifle, fireRate: 0.1, damage: 15, speed: 900, spread: 0.1, count: 1, color: '#4444FF', magSize: 20, reloadTime: 1.0, wallDamage: 1 },
+    [WeaponType.Shotgun]: { type: WeaponType.Shotgun, fireRate: 1.0, damage: 20, speed: 600, spread: 0.3, count: 5, color: '#FF4444', magSize: 8, reloadTime: 1.5, wallDamage: 2 },
+    [WeaponType.Sniper]: { type: WeaponType.Sniper, fireRate: 1.5, damage: 80, speed: 1500, spread: 0.0, count: 1, color: '#44FF44', magSize: 5, reloadTime: 2.0, wallDamage: 5 },
+    [WeaponType.RocketLauncher]: { type: WeaponType.RocketLauncher, fireRate: 2.0, damage: 100, speed: 500, spread: 0.05, count: 1, isRocket: true, color: '#FFAA00', magSize: 3, reloadTime: 1.75, wallDamage: 5 }
 };
 
 export class Loot {

@@ -21,6 +21,7 @@ export interface UIState {
     isReloading: boolean;
     dashCooldown: number;
     dashReady: boolean;
+    dashTimeRemaining: number;
     aliveCount: number;
     elapsedTime: number;
 }
@@ -97,7 +98,10 @@ export class Engine {
     }
 
     public getUIState(): UIState {
-        const dashReady = performance.now() / 1000 - this.player.lastDashTime >= this.player.dashCooldown;
+        const now = performance.now() / 1000;
+        const dashReady = now - this.player.lastDashTime >= this.player.dashCooldown;
+        const dashTimeRemaining = Math.max(0, this.player.dashCooldown - (now - this.player.lastDashTime));
+
         return {
             health: this.player.health,
             maxHealth: this.player.maxHealth,
@@ -109,6 +113,7 @@ export class Engine {
             isReloading: this.player.isReloading,
             dashCooldown: this.player.dashCooldown,
             dashReady: dashReady,
+            dashTimeRemaining: dashTimeRemaining,
             aliveCount: this.npcs.length + (this.player.isDead ? 0 : 1),
             elapsedTime: this.gameEndTime ? (this.gameEndTime - this.gameStartTime) : (performance.now() - this.gameStartTime)
         };
