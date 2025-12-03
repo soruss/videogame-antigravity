@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" stroke="black" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Pistol Shape -->
+  <path d="M15,40 L15,70 L35,70 L40,55 L85,55 L85,40 Z" fill="#333" stroke="none" />
+  <path d="M15,40 L15,70 L35,70 L40,55 L85,55 L85,40 Z" stroke="#000" fill="none" />
+  <!-- Trigger Guard -->
+  <path d="M35,55 Q35,65 45,65 L45,55" stroke="#000" fill="none" stroke-width="4" />
+  <!-- Barrel Detail -->
+  <line x1="85" y1="45" x2="85" y2="50" stroke="#000" stroke-width="4" />
+</svg>
