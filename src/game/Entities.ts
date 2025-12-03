@@ -239,7 +239,7 @@ export class Player {
         this.isNPC = isNPC;
     }
 
-    public updateAI(dt: number, world: World, loot: Loot[], players: Player[]) {
+    public updateAI(dt: number, world: World, loot: Loot[], players: Player[], isMobile: boolean = false) {
         if (!this.isNPC || this.isDead) return;
 
         // 1. State Decision
@@ -300,7 +300,9 @@ export class Player {
                 if (dist < 400) {
                     // Shoot (Only if delay passed)
                     if (now - this.weaponPickupTime >= 3.0) {
-                        return this.shoot();
+                        // Nerf NPC accuracy on Mobile (2x spread)
+                        const spreadMultiplier = isMobile ? 2.0 : 1.0;
+                        return this.shoot(spreadMultiplier);
                     }
                 } else {
                     // Chase
@@ -350,7 +352,7 @@ export class Player {
         }
     }
 
-    public shoot(): Bullet[] | null {
+    public shoot(spreadMultiplier: number = 1.0): Bullet[] | null {
         if (this.isReloading || !this.weapon) return null;
 
         const now = performance.now() / 1000;
@@ -369,7 +371,7 @@ export class Player {
 
             for (let i = 0; i < stats.count; i++) {
                 // Spread
-                const angle = this.rotation + (Math.random() - 0.5) * stats.spread;
+                const angle = this.rotation + (Math.random() - 0.5) * stats.spread * spreadMultiplier;
 
                 // Spawn Bullet
                 // Offset to gun position

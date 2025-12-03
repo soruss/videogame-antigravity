@@ -44,6 +44,7 @@ export class Engine {
     private viewW: number;
     private viewH: number;
     private zoom: number = 1; // Default Zoom
+    public isMobile: boolean = false; // Mobile Detection
     private animationId: number | null = null;
 
     // Stopwatch
@@ -168,8 +169,10 @@ export class Engine {
         // Mobile Zoom Logic (Zoom out 20% on small screens)
         if (window.innerWidth < 768) {
             this.zoom = 0.8;
+            this.isMobile = true;
         } else {
             this.zoom = 1;
+            this.isMobile = false;
         }
 
         this.viewW = this.canvas.width / this.zoom;
@@ -315,6 +318,7 @@ export class Engine {
         this.camera.y = this.player.position.y - this.viewH / 2;
 
         // Player Shooting
+        // Player Shooting
         if (this.input.mouseDown) {
             const newBullets = this.player.shoot();
             if (newBullets) {
@@ -326,7 +330,7 @@ export class Engine {
         const allPlayers = [this.player, ...this.npcs];
         this.npcs.forEach(npc => {
             // AI Logic
-            const newBullets = npc.updateAI(dt, this.world, this.loot, allPlayers);
+            const newBullets = npc.updateAI(dt, this.world, this.loot, allPlayers, this.isMobile);
             if (newBullets) {
                 this.bullets.push(...newBullets);
             }
