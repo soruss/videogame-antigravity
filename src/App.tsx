@@ -3,6 +3,8 @@ import { Engine, GameState } from './game/Engine';
 import type { UIState } from './game/Engine';
 import './index.css';
 
+import { Analytics } from "@vercel/analytics/react"
+
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<Engine | null>(null);
@@ -63,6 +65,7 @@ function App() {
 
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden font-sans select-none">
+      <Analytics />
       <canvas ref={canvasRef} className="block w-full h-full" />
 
       {/* HUD Overlay */}
