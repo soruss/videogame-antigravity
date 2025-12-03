@@ -282,7 +282,7 @@ function App() {
                 <div className={`w-3 h-3 rounded-full ${uiState.dashReady ? 'bg-white shadow-[0_0_10px_#fff]' : 'bg-slate-600'}`} />
                 {!uiState.dashReady && (
                   <span className="text-slate-400 font-black text-xs">
-                    {uiState.dashCooldown.toFixed(1)}s
+                    {uiState.dashTimeRemaining?.toFixed(1)}s
                   </span>
                 )}
               </div>
