@@ -239,7 +239,7 @@ export class Player {
         this.isNPC = isNPC;
     }
 
-    public updateAI(dt: number, world: World, loot: Loot[], players: Player[], isMobile: boolean = false) {
+    public updateAI(dt: number, world: World, loot: Loot[], players: Player[], isMobile: boolean = false, potions: Potion[] = []) {
         if (!this.isNPC || this.isDead) return;
 
         // 1. State Decision
@@ -270,29 +270,43 @@ export class Player {
         } else if (this.aiState === 'FIGHTING') {
             // Check 3-second delay
             const now = performance.now() / 1000;
-            if (now - this.weaponPickupTime < 3.0) {
-                // Can't shoot yet, but can chase/aim
-                // Maybe just run away or strafe? For now, standard behavior but block shoot()
-            }
 
             // Find nearest target (Player or other NPC)
             let nearestTarget: Player | null = null;
-            let minDist = Infinity;
+            let minTargetDist = Infinity;
 
             for (const p of players) {
                 if (p === this || p.isDead) continue;
                 const dist = Math.sqrt((p.position.x - this.position.x) ** 2 + (p.position.y - this.position.y) ** 2);
-                if (dist < minDist) {
-                    minDist = dist;
+                if (dist < minTargetDist) {
+                    minTargetDist = dist;
                     nearestTarget = p;
                 }
             }
 
-            if (nearestTarget) {
-                const dist = Math.sqrt((nearestTarget.position.x - this.position.x) ** 2 + (nearestTarget.position.y - this.position.y) ** 2);
+            // Potion Logic: If hurt (< 100 HP), check for potions
+            let targetPotion: Potion | null = null;
+            let minPotionDist = Infinity;
 
-                // Line of Sight Check (Simplified: just check distance and rotation)
-                // In a real implementation, we'd raycast. For now, if close enough, shoot.
+            if (this.health < 100) {
+                for (const p of potions) {
+                    if (!p.active) continue;
+                    const dist = Math.sqrt((p.position.x - this.position.x) ** 2 + (p.position.y - this.position.y) ** 2);
+                    if (dist < minPotionDist) {
+                        minPotionDist = dist;
+                        targetPotion = p;
+                    }
+                }
+            }
+
+            // Decision: Fight or Heal?
+            // Heal if: Found potion AND (Potion is closer than Enemy OR No Enemy visible)
+            if (targetPotion && (minPotionDist < minTargetDist || !nearestTarget)) {
+                // Seek Potion
+                this.moveTo(dt, targetPotion.position, world);
+            } else if (nearestTarget) {
+                // Fight
+                const dist = minTargetDist;
 
                 // Rotate towards target
                 this.rotation = Math.atan2(nearestTarget.position.y - this.position.y, nearestTarget.position.x - this.position.x);

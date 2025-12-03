@@ -375,7 +375,7 @@ export class Engine {
         const allPlayers = [this.player, ...this.npcs];
         this.npcs.forEach(npc => {
             // AI Logic
-            const newBullets = npc.updateAI(dt, this.world, this.loot, allPlayers, this.isMobile);
+            const newBullets = npc.updateAI(dt, this.world, this.loot, allPlayers, this.isMobile, this.potions);
             if (newBullets) {
                 this.bullets.push(...newBullets);
             }
@@ -498,21 +498,21 @@ export class Engine {
         // Potions
         this.potions.forEach(p => {
             if (p.active) {
+                // Check Player
                 const dist = Math.sqrt((p.position.x - this.player.position.x) ** 2 + (p.position.y - this.player.position.y) ** 2);
                 if (dist < this.player.radius + p.radius) {
-                    // Consume Potion
-                    p.active = false;
-                    const healAmount = 50;
-                    const missingHealth = this.player.maxHealth - this.player.health;
-
-                    if (healAmount > missingHealth) {
-                        this.player.health = this.player.maxHealth;
-                        const overflow = healAmount - missingHealth;
-                        this.player.shield = Math.min(this.player.maxShield, this.player.shield + overflow);
-                    } else {
-                        this.player.health += healAmount;
-                    }
+                    this.consumePotion(this.player, p);
                 }
+
+                // Check NPCs
+                this.npcs.forEach(npc => {
+                    if (p.active) { // Check again in case player took it
+                        const npcDist = Math.sqrt((p.position.x - npc.position.x) ** 2 + (p.position.y - npc.position.y) ** 2);
+                        if (npcDist < npc.radius + p.radius) {
+                            this.consumePotion(npc, p);
+                        }
+                    }
+                });
             }
         });
         this.potions = this.potions.filter(p => p.active);
@@ -577,6 +577,20 @@ export class Engine {
                 if (this.onGameStateChange) this.onGameStateChange(GameState.GAME_OVER);
                 if (this.onWinner) this.onWinner('GAME OVER');
             }
+        }
+    }
+
+    private consumePotion(entity: Player, potion: Potion) {
+        potion.active = false;
+        const healAmount = 50;
+        const missingHealth = entity.maxHealth - entity.health;
+
+        if (healAmount > missingHealth) {
+            entity.health = entity.maxHealth;
+            const overflow = healAmount - missingHealth;
+            entity.shield = Math.min(entity.maxShield, entity.shield + overflow);
+        } else {
+            entity.health += healAmount;
         }
     }
 
