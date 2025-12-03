@@ -486,7 +486,13 @@ export class Player {
             }
 
             // Apply Speed
-            const speed = this.weapon ? 300 : 400; // Faster when unarmed
+            let speed = this.weapon ? 300 : 400; // Faster when unarmed
+
+            // Swift Halo Speed Boost
+            if (this.hasHalo) {
+                speed *= 1.25;
+            }
+
             this.velocity.x *= speed;
             this.velocity.y *= speed;
 

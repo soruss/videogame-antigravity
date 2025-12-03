@@ -80,6 +80,7 @@ export class Engine {
         // Initial Loot
         this.spawnLoot();
         this.spawnPotions();
+        this.spawnSwiftHalo();
 
         // Initial NPCs
         this.spawnNPCs(15);
