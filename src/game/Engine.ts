@@ -2,17 +2,35 @@ import { World, TILE_SIZE, TileType } from './World';
 import { Player, Bullet, Loot, WEAPONS, WeaponType, Explosion, Particle } from './Entities';
 import { Input } from './Input';
 
-export enum GameState {
-    COUNTDOWN,
-    PLAYING,
-    GAME_OVER
+export const GameState = {
+    COUNTDOWN: 0,
+    PLAYING: 1,
+    GAME_OVER: 2
+} as const;
+
+export type GameState = typeof GameState[keyof typeof GameState];
+
+export interface UIState {
+    health: number;
+    maxHealth: number;
+    shield: number;
+    maxShield: number;
+    ammo: number;
+    maxAmmo: number;
+    weapon: string | null;
+    isReloading: boolean;
+    dashCooldown: number;
+    dashReady: boolean;
+    aliveCount: number;
 }
+
+
 
 export class Engine {
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
     private world: World;
-    private player: Player;
+    public player: Player; // Public for App.tsx access if needed, but getUIState is better
     private npcs: Player[] = [];
     private bullets: Bullet[] = [];
     private loot: Loot[] = [];
@@ -34,7 +52,7 @@ export class Engine {
         this.resize();
         window.addEventListener('resize', () => this.resize());
 
-        this.input = new Input(this.canvas);
+        this.input = new Input(); // Fixed: No arguments
         this.world = new World(50, 50); // 50x50 tiles
         this.viewW = this.canvas.width;
         this.viewH = this.canvas.height;
@@ -42,11 +60,16 @@ export class Engine {
         // Spawn Player in Safe Zone
         this.player = new Player(5 * TILE_SIZE + TILE_SIZE / 2, 5 * TILE_SIZE + TILE_SIZE / 2);
 
+        // Give Starting Weapon (None - Unarmed)
+        this.player.weapon = null;
+        this.player.currentAmmo = 0;
+        this.player.maxAmmo = 0;
+
         // Initial Loot
         this.spawnLoot();
 
         // Initial NPCs
-        this.spawnNPCs(5);
+        this.spawnNPCs(15);
     }
 
     public start() {
@@ -64,6 +87,23 @@ export class Engine {
         }
     }
 
+    public getUIState(): UIState {
+        const dashReady = performance.now() / 1000 - this.player.lastDashTime >= this.player.dashCooldown;
+        return {
+            health: this.player.health,
+            maxHealth: this.player.maxHealth,
+            shield: this.player.shield,
+            maxShield: this.player.maxShield,
+            ammo: this.player.currentAmmo,
+            maxAmmo: this.player.maxAmmo,
+            weapon: this.player.weapon,
+            isReloading: this.player.isReloading,
+            dashCooldown: this.player.dashCooldown,
+            dashReady: dashReady,
+            aliveCount: this.npcs.length + (this.player.isDead ? 0 : 1)
+        };
+    }
+
     private resize() {
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
@@ -72,8 +112,8 @@ export class Engine {
     }
 
     private spawnLoot() {
-        for (let i = 0; i < 10; i++) {
-            const pos = this.findValidSpawnPosition();
+        for (let i = 0; i < 18; i++) {
+            const pos = this.findValidSpawnPosition([], 0);
             if (pos) {
                 const weapons = Object.values(WeaponType);
                 const weapon = weapons[Math.floor(Math.random() * weapons.length)];
@@ -84,26 +124,43 @@ export class Engine {
 
     private spawnNPCs(count: number) {
         for (let i = 0; i < count; i++) {
-            const pos = this.findValidSpawnPosition();
+            // Avoid existing NPCs and Player
+            const avoid = [this.player, ...this.npcs];
+            const pos = this.findValidSpawnPosition(avoid, 5 * TILE_SIZE); // 5 tiles distance
             if (pos) {
                 const npc = new Player(pos.x, pos.y, true);
-                // Give NPC random weapon
-                const weapons = Object.values(WeaponType);
-                const weapon = weapons[Math.floor(Math.random() * weapons.length)];
-                npc.weapon = weapon;
-                npc.currentAmmo = WEAPONS[weapon].magSize;
-                npc.maxAmmo = WEAPONS[weapon].magSize;
+                // NPCs start unarmed
+                npc.weapon = null;
+                npc.currentAmmo = 0;
+                npc.maxAmmo = 0;
                 this.npcs.push(npc);
             }
         }
     }
 
-    private findValidSpawnPosition(): { x: number, y: number } | null {
+    private findValidSpawnPosition(avoidEntities: { position: { x: number, y: number } }[] = [], minDist: number = 0): { x: number, y: number } | null {
         for (let i = 0; i < 100; i++) {
             const x = Math.floor(Math.random() * this.world.width);
             const y = Math.floor(Math.random() * this.world.height);
-            if (this.world.getTile(x, y) === TileType.FLOOR) {
-                return { x: x * TILE_SIZE + TILE_SIZE / 2, y: y * TILE_SIZE + TILE_SIZE / 2 };
+
+            // Check Wall
+            if (this.world.getTile(x, y) !== TileType.FLOOR) continue;
+
+            const worldX = x * TILE_SIZE + TILE_SIZE / 2;
+            const worldY = y * TILE_SIZE + TILE_SIZE / 2;
+
+            // Check Distance
+            let valid = true;
+            for (const entity of avoidEntities) {
+                const dist = Math.sqrt((worldX - entity.position.x) ** 2 + (worldY - entity.position.y) ** 2);
+                if (dist < minDist) {
+                    valid = false;
+                    break;
+                }
+            }
+
+            if (valid) {
+                return { x: worldX, y: worldY };
             }
         }
         return null;
@@ -112,13 +169,19 @@ export class Engine {
     private reset() {
         this.world = new World(50, 50);
         this.player = new Player(5 * TILE_SIZE + TILE_SIZE / 2, 5 * TILE_SIZE + TILE_SIZE / 2);
+
+        // Reset with No Weapon
+        this.player.weapon = null;
+        this.player.currentAmmo = 0;
+        this.player.maxAmmo = 0;
+
         this.npcs = [];
         this.bullets = [];
         this.loot = [];
         this.explosions = [];
         this.particles = [];
         this.spawnLoot();
-        this.spawnNPCs(5);
+        this.spawnNPCs(15);
         if (this.onGameStateChange) this.onGameStateChange(GameState.PLAYING);
     }
 
@@ -133,11 +196,15 @@ export class Engine {
     }
 
     private update(dt: number) {
-        if (this.player.isDead) {
-            // Restart with 'R' to match UI
-            if (this.input.keys['KeyR']) {
+        // Global Restart (R) - Works in Game Over or Victory
+        if (this.input.keys['KeyR']) {
+            if (this.player.isDead || this.npcs.length === 0) {
                 this.reset();
+                return;
             }
+        }
+
+        if (this.player.isDead) {
             return;
         }
 
@@ -153,14 +220,23 @@ export class Engine {
             }
         }
 
-        // Drop Weapon (G)
-        if (this.input.keys['KeyG'] && !this.player.dropRequested) {
+        // Drop Weapon (Q)
+        if (this.input.keys['KeyQ'] && !this.player.dropRequested) {
             this.player.dropRequested = true;
             if (this.player.weapon) {
-                this.loot.push(new Loot(this.player.position.x, this.player.position.y, this.player.weapon));
+                // Throw forward
+                const throwDist = 50;
+                const dropX = this.player.position.x + Math.cos(this.player.rotation) * throwDist;
+                const dropY = this.player.position.y + Math.sin(this.player.rotation) * throwDist;
+
+                // Ensure drop is within bounds
+                const safeX = Math.max(TILE_SIZE, Math.min(dropX, this.world.width * TILE_SIZE - TILE_SIZE));
+                const safeY = Math.max(TILE_SIZE, Math.min(dropY, this.world.height * TILE_SIZE - TILE_SIZE));
+
+                this.loot.push(new Loot(safeX, safeY, this.player.weapon));
                 this.player.weapon = null;
             }
-        } else if (!this.input.keys['KeyG']) {
+        } else if (!this.input.keys['KeyQ']) {
             this.player.dropRequested = false;
         }
 
@@ -171,7 +247,7 @@ export class Engine {
         this.camera.y = this.player.position.y - this.viewH / 2;
 
         // Player Shooting
-        if (this.input.mouse.left) {
+        if (this.input.mouseDown) {
             const newBullets = this.player.shoot();
             if (newBullets) {
                 this.bullets.push(...newBullets);
@@ -179,25 +255,18 @@ export class Engine {
         }
 
         // NPCs
+        const allPlayers = [this.player, ...this.npcs];
         this.npcs.forEach(npc => {
-            // Simple AI
-            const dist = Math.sqrt((this.player.position.x - npc.position.x) ** 2 + (this.player.position.y - npc.position.y) ** 2);
-
-            if (dist < 400) {
-                // Aim at player
-                npc.rotation = Math.atan2(this.player.position.y - npc.position.y, this.player.position.x - npc.position.x);
-
-                // Shoot if line of sight (simplified)
-                const newBullets = npc.shoot();
-                if (newBullets) {
-                    this.bullets.push(...newBullets);
-                }
+            // AI Logic
+            const newBullets = npc.updateAI(dt, this.world, this.loot, allPlayers);
+            if (newBullets) {
+                this.bullets.push(...newBullets);
             }
 
             npc.update(dt, this.world);
         });
 
-        // Bullets
+        // Update Bullets
         for (let i = this.bullets.length - 1; i >= 0; i--) {
             const b = this.bullets[i];
             b.update(dt);
@@ -215,7 +284,7 @@ export class Engine {
                 }
 
                 if (b.isRocket) {
-                    this.explosions.push(new Explosion(b.position.x, b.position.y));
+                    this.explosions.push(new Explosion(b.position.x, b.position.y, b.owner));
                 }
             }
 
@@ -225,8 +294,8 @@ export class Engine {
                 const dist = Math.sqrt((b.position.x - this.player.position.x) ** 2 + (b.position.y - this.player.position.y) ** 2);
                 if (dist < this.player.radius + b.radius) {
                     b.active = false;
-                    this.damageEntity(this.player, b.damage);
-                    if (b.isRocket) this.explosions.push(new Explosion(b.position.x, b.position.y));
+                    this.damageEntity(this.player, b.damage, b.owner);
+                    if (b.isRocket) this.explosions.push(new Explosion(b.position.x, b.position.y, b.owner));
                 }
             }
 
@@ -236,8 +305,8 @@ export class Engine {
                     const dist = Math.sqrt((b.position.x - npc.position.x) ** 2 + (b.position.y - npc.position.y) ** 2);
                     if (dist < npc.radius + b.radius) {
                         b.active = false;
-                        this.damageEntity(npc, b.damage);
-                        if (b.isRocket) this.explosions.push(new Explosion(b.position.x, b.position.y));
+                        this.damageEntity(npc, b.damage, b.owner);
+                        if (b.isRocket) this.explosions.push(new Explosion(b.position.x, b.position.y, b.owner));
                     }
                 }
             });
@@ -254,14 +323,14 @@ export class Engine {
                 // Check Player
                 const pDist = Math.sqrt((exp.position.x - this.player.position.x) ** 2 + (exp.position.y - this.player.position.y) ** 2);
                 if (pDist < exp.maxRadius) {
-                    this.damageEntity(this.player, 100 * (1 - pDist / exp.maxRadius));
+                    this.damageEntity(this.player, 100 * (1 - pDist / exp.maxRadius), exp.owner);
                 }
 
                 // Check NPCs
                 this.npcs.forEach(npc => {
                     const nDist = Math.sqrt((exp.position.x - npc.position.x) ** 2 + (exp.position.y - npc.position.y) ** 2);
                     if (nDist < exp.maxRadius) {
-                        this.damageEntity(npc, 100 * (1 - nDist / exp.maxRadius));
+                        this.damageEntity(npc, 100 * (1 - nDist / exp.maxRadius), exp.owner);
                     }
                 });
 
@@ -283,7 +352,7 @@ export class Engine {
             if (l.active) {
                 const dist = Math.sqrt((l.position.x - this.player.position.x) ** 2 + (l.position.y - this.player.position.y) ** 2);
                 if (dist < this.player.radius + l.radius) {
-                    // Pick up
+                    // Pick up ONLY if unarmed
                     if (!this.player.weapon) {
                         this.player.weapon = l.weapon;
                         this.player.currentAmmo = WEAPONS[l.weapon].magSize;
@@ -291,6 +360,19 @@ export class Engine {
                         l.active = false;
                     }
                 }
+
+                // NPCs pick up loot too!
+                this.npcs.forEach(npc => {
+                    const dist = Math.sqrt((l.position.x - npc.position.x) ** 2 + (l.position.y - npc.position.y) ** 2);
+                    if (dist < npc.radius + l.radius) {
+                        if (!npc.weapon) {
+                            npc.weapon = l.weapon;
+                            npc.currentAmmo = WEAPONS[l.weapon].magSize;
+                            npc.maxAmmo = WEAPONS[l.weapon].magSize;
+                            l.active = false;
+                        }
+                    }
+                });
             }
         });
         this.loot = this.loot.filter(l => l.active);
@@ -302,13 +384,19 @@ export class Engine {
         // Cleanup Dead NPCs
         this.npcs = this.npcs.filter(n => !n.isDead);
 
+        // Check Victory
+        if (this.npcs.length === 0 && !this.player.isDead) {
+            if (this.onWinner) this.onWinner('Player');
+            if (this.onGameStateChange) this.onGameStateChange(GameState.GAME_OVER);
+        }
+
         // Regen
         if (performance.now() / 1000 - this.player.lastDamageTime > 5) {
-            this.player.health = Math.min(this.player.maxHealth, this.player.health + dt);
+            this.player.health = Math.min(this.player.maxHealth, this.player.health + dt * 2);
         }
     }
 
-    private damageEntity(entity: Player, amount: number) {
+    private damageEntity(entity: Player, amount: number, dealer: Player | null) {
         entity.lastDamageTime = performance.now() / 1000;
 
         // Shield Absorb
@@ -324,16 +412,23 @@ export class Engine {
 
         entity.health -= amount;
         if (entity.health <= 0) {
+            if (entity.isDead) return;
             entity.isDead = true;
             this.spawnBlood(entity.position.x, entity.position.y);
 
             // Siphon (if player killed npc)
-            if (entity.isNPC && !this.player.isDead) {
-                this.player.health += 30;
-                if (this.player.health > this.player.maxHealth) {
-                    const overflow = this.player.health - this.player.maxHealth;
+            // CHECK: dealer === this.player
+            if (entity.isNPC && !this.player.isDead && !entity.siphoned && dealer === this.player) {
+                entity.siphoned = true;
+                const healAmount = 30;
+                const missingHealth = this.player.maxHealth - this.player.health;
+
+                if (healAmount > missingHealth) {
                     this.player.health = this.player.maxHealth;
-                    this.player.shield = Math.min(this.player.maxShield, this.player.shield + overflow);
+                    const overflow = healAmount - missingHealth;
+                    this.player.shield = Math.min(50, this.player.shield + overflow);
+                } else {
+                    this.player.health += healAmount;
                 }
             } else if (!entity.isNPC) {
                 // Player Died
@@ -387,56 +482,6 @@ export class Engine {
 
         this.ctx.restore();
 
-        // UI
-        this.renderUI();
-    }
-
-    private renderUI() {
-        if (this.player.isDead) {
-            // Don't draw internal Game Over text, let React handle it
-            return;
-        }
-
-        // HUD Bottom Left
-        const hudX = 20;
-        const hudY = this.canvas.height - 20;
-
-        // Health Bar
-        this.ctx.fillStyle = '#333';
-        this.ctx.fillRect(hudX, hudY - 30, 200, 20);
-        this.ctx.fillStyle = '#FF0000';
-        this.ctx.fillRect(hudX, hudY - 30, 200 * (this.player.health / this.player.maxHealth), 20);
-        this.ctx.strokeStyle = '#FFF';
-        this.ctx.strokeRect(hudX, hudY - 30, 200, 20);
-
-        // Shield Bar (Above Health)
-        if (this.player.shield > 0) {
-            this.ctx.fillStyle = '#004488';
-            this.ctx.fillRect(hudX, hudY - 60, 200, 15);
-            this.ctx.fillStyle = '#00FFFF';
-            this.ctx.fillRect(hudX, hudY - 60, 200 * (this.player.shield / this.player.maxShield), 15);
-            this.ctx.strokeStyle = '#FFF';
-            this.ctx.strokeRect(hudX, hudY - 60, 200, 15);
-        }
-
-        // Ammo / Weapon Info
-        this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.font = '20px Arial';
-        this.ctx.textAlign = 'left';
-        if (this.player.weapon) {
-            this.ctx.fillText(`${this.player.weapon}`, hudX, hudY - 80);
-            this.ctx.fillText(`${this.player.currentAmmo} / ${this.player.maxAmmo}`, hudX, hudY - 105);
-            if (this.player.isReloading) {
-                this.ctx.fillStyle = '#FFFF00';
-                this.ctx.fillText('RELOADING...', hudX + 150, hudY - 105);
-            }
-        } else {
-            this.ctx.fillText('Unarmed', hudX, hudY - 80);
-        }
-
-        // Dash Cooldown
-        const dashReady = performance.now() / 1000 - this.player.lastDashTime >= this.player.dashCooldown;
-        this.ctx.fillStyle = dashReady ? '#00FF00' : '#555';
-        this.ctx.fillText(`DASH: ${dashReady ? 'READY' : 'COOLDOWN'}`, hudX, hudY - 130);
+        // UI Removed: handled by React
     }
 }

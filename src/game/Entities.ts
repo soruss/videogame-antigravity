@@ -1,4 +1,4 @@
-import { World, TILE_SIZE, TileType } from './World';
+import { World, TILE_SIZE } from './World';
 import type { Vector2 } from './types';
 import type { Input } from './Input';
 
@@ -45,7 +45,7 @@ export class Loot {
         this.weapon = weapon;
     }
 
-    public render(ctx: CanvasRenderingContext2D, cameraOffset: Vector2) {
+    public render(ctx: CanvasRenderingContext2D, _cameraOffset: Vector2) {
         if (!this.active) return;
 
         ctx.save();
@@ -96,7 +96,7 @@ export class Bullet {
         }
     }
 
-    public render(ctx: CanvasRenderingContext2D, cameraOffset: Vector2) {
+    public render(ctx: CanvasRenderingContext2D, _cameraOffset: Vector2) {
         ctx.save();
         ctx.translate(this.position.x, this.position.y);
 
@@ -116,9 +116,11 @@ export class Explosion {
     public duration: number = 0.5;
     public timeElapsed: number = 0;
     public active: boolean = true;
+    public owner: Player | null = null;
 
-    constructor(x: number, y: number) {
+    constructor(x: number, y: number, owner: Player | null = null) {
         this.position = { x, y };
+        this.owner = owner;
     }
 
     public update(dt: number) {
@@ -132,7 +134,7 @@ export class Explosion {
         }
     }
 
-    public render(ctx: CanvasRenderingContext2D, cameraOffset: Vector2) {
+    public render(ctx: CanvasRenderingContext2D, _cameraOffset: Vector2) {
         ctx.save();
         ctx.translate(this.position.x, this.position.y);
 
@@ -178,7 +180,7 @@ export class Particle {
         this.position.y += this.velocity.y * dt;
     }
 
-    public render(ctx: CanvasRenderingContext2D, cameraOffset: Vector2) {
+    public render(ctx: CanvasRenderingContext2D, _cameraOffset: Vector2) {
         if (this.life <= 0) return;
         ctx.save();
         ctx.translate(this.position.x, this.position.y);
@@ -199,6 +201,7 @@ export class Player {
     public health: number = 100;
     public maxHealth: number = 100;
     public isDead: boolean = false;
+    public siphoned: boolean = false;
 
     // Inventory
     public weapon: WeaponType | null = null;
@@ -217,7 +220,7 @@ export class Player {
     public lastDamageTime: number = 0;
 
     // Dash
-    public dashCooldown: number = 5.0;
+    public dashCooldown: number = 3.0;
     public lastDashTime: number = -10; // Allow immediate dash
     public isDashing: boolean = false;
     public dashDuration: number = 0.2;
@@ -225,10 +228,116 @@ export class Player {
 
     // AI Support
     public isNPC: boolean = false;
+    public aiState: 'IDLE' | 'SEARCHING' | 'FIGHTING' = 'IDLE';
+    public target: Vector2 | null = null;
+    public path: Vector2[] = [];
+    public pathTimer: number = 0;
 
     constructor(x: number, y: number, isNPC: boolean = false) {
         this.position = { x, y };
         this.isNPC = isNPC;
+    }
+
+    public updateAI(dt: number, world: World, loot: Loot[], players: Player[]) {
+        if (!this.isNPC || this.isDead) return;
+
+        // 1. State Decision
+        if (!this.weapon) {
+            this.aiState = 'SEARCHING';
+        } else {
+            this.aiState = 'FIGHTING';
+        }
+
+        // 2. Action based on State
+        if (this.aiState === 'SEARCHING') {
+            // Find nearest weapon
+            let nearestLoot: Loot | null = null;
+            let minDist = Infinity;
+
+            for (const l of loot) {
+                if (!l.active) continue;
+                const dist = Math.sqrt((l.position.x - this.position.x) ** 2 + (l.position.y - this.position.y) ** 2);
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearestLoot = l;
+                }
+            }
+
+            if (nearestLoot) {
+                this.moveTo(dt, nearestLoot.position, world);
+            }
+        } else if (this.aiState === 'FIGHTING') {
+            // Find nearest target (Player or other NPC)
+            let nearestTarget: Player | null = null;
+            let minDist = Infinity;
+
+            for (const p of players) {
+                if (p === this || p.isDead) continue;
+                const dist = Math.sqrt((p.position.x - this.position.x) ** 2 + (p.position.y - this.position.y) ** 2);
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearestTarget = p;
+                }
+            }
+
+            if (nearestTarget) {
+                const dist = Math.sqrt((nearestTarget.position.x - this.position.x) ** 2 + (nearestTarget.position.y - this.position.y) ** 2);
+
+                // Line of Sight Check (Simplified: just check distance and rotation)
+                // In a real implementation, we'd raycast. For now, if close enough, shoot.
+
+                // Rotate towards target
+                this.rotation = Math.atan2(nearestTarget.position.y - this.position.y, nearestTarget.position.x - this.position.x);
+
+                if (dist < 400) {
+                    // Shoot
+                    return this.shoot();
+                } else {
+                    // Chase
+                    this.moveTo(dt, nearestTarget.position, world);
+                }
+            }
+        }
+        return null;
+    }
+
+    private moveTo(dt: number, target: Vector2, world: World) {
+        // Re-path occasionally
+        this.pathTimer -= dt;
+        if (this.pathTimer <= 0 || (this.path.length === 0 && Math.random() < 0.1)) {
+            this.pathTimer = 1.0; // Path every second
+            const path = world.findPath(this.position, target);
+            if (path) this.path = path;
+        }
+
+        // Follow Path
+        if (this.path.length > 0) {
+            const nextPoint = this.path[0];
+            const dist = Math.sqrt((nextPoint.x - this.position.x) ** 2 + (nextPoint.y - this.position.y) ** 2);
+
+            if (dist < 10) {
+                this.path.shift(); // Reached point
+            } else {
+                // Move towards point
+                const dx = nextPoint.x - this.position.x;
+                const dy = nextPoint.y - this.position.y;
+                this.rotation = Math.atan2(dy, dx);
+
+                this.velocity.x = Math.cos(this.rotation) * 300;
+                this.velocity.y = Math.sin(this.rotation) * 300;
+
+                // Apply movement manually here since update() handles physics
+                // Actually, let's set velocity and let update() handle collision
+                return;
+            }
+        } else {
+            // Fallback: Direct line if no path (or close)
+            const dx = target.x - this.position.x;
+            const dy = target.y - this.position.y;
+            this.rotation = Math.atan2(dy, dx);
+            this.velocity.x = Math.cos(this.rotation) * 300;
+            this.velocity.y = Math.sin(this.rotation) * 300;
+        }
     }
 
     public shoot(): Bullet[] | null {
@@ -383,7 +492,7 @@ export class Player {
         this.position.y = Math.max(this.radius, Math.min(this.position.y, world.height * TILE_SIZE - this.radius));
     }
 
-    public render(ctx: CanvasRenderingContext2D, cameraOffset: Vector2) {
+    public render(ctx: CanvasRenderingContext2D, _cameraOffset: Vector2) {
         if (this.isDead) return;
 
         ctx.save();
