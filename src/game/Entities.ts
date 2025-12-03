@@ -27,7 +27,7 @@ export interface WeaponStats {
 }
 
 export const WEAPONS: Record<WeaponType, WeaponStats> = {
-    [WeaponType.SMG]: { type: WeaponType.SMG, fireRate: 0.08, damage: 20, speed: 850, spread: 0.15, count: 1, color: '#CCCCCC', magSize: 25, reloadTime: 0.75, wallDamage: 0 },
+    [WeaponType.SMG]: { type: WeaponType.SMG, fireRate: 0.08, damage: 12, speed: 850, spread: 0.15, count: 1, color: '#CCCCCC', magSize: 25, reloadTime: 0.75, wallDamage: 0 },
     [WeaponType.AssaultRifle]: { type: WeaponType.AssaultRifle, fireRate: 0.1, damage: 15, speed: 900, spread: 0.1, count: 1, color: '#4444FF', magSize: 20, reloadTime: 1.0, wallDamage: 1 },
     [WeaponType.Shotgun]: { type: WeaponType.Shotgun, fireRate: 1.0, damage: 20, speed: 600, spread: 0.3, count: 5, color: '#FF4444', magSize: 8, reloadTime: 1.5, wallDamage: 2 },
     [WeaponType.Sniper]: { type: WeaponType.Sniper, fireRate: 1.5, damage: 80, speed: 1500, spread: 0.0, count: 1, color: '#44FF44', magSize: 5, reloadTime: 2.0, wallDamage: 5 },
@@ -595,5 +595,48 @@ export class Player {
             ctx.fillRect(-20, -50, 40 * progress, 5);
             ctx.restore();
         }
+    }
+}
+
+export class Potion {
+    public position: Vector2;
+    public radius: number = 15;
+    public active: boolean = true;
+
+    constructor(x: number, y: number) {
+        this.position = { x, y };
+    }
+
+    public render(ctx: CanvasRenderingContext2D, _cameraOffset: Vector2) {
+        if (!this.active) return;
+
+        ctx.save();
+        ctx.translate(this.position.x, this.position.y);
+
+        // Glow
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#3B82F6'; // Blue glow
+
+        // Bottle Body (Round bottom)
+        ctx.fillStyle = '#60A5FA'; // Light Blue Liquid
+        ctx.beginPath();
+        ctx.arc(0, 5, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Bottle Neck
+        ctx.fillStyle = '#93C5FD'; // Lighter Blue Glass
+        ctx.fillRect(-3, -8, 6, 8);
+
+        // Cork
+        ctx.fillStyle = '#78350F'; // Brown
+        ctx.fillRect(-4, -10, 8, 3);
+
+        // Highlight/Reflection
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.beginPath();
+        ctx.arc(-3, 3, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
     }
 }

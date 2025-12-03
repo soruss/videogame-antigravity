@@ -1,5 +1,5 @@
 import { World, TILE_SIZE, TileType } from './World';
-import { Player, Bullet, Loot, WEAPONS, WeaponType, Explosion, Particle } from './Entities';
+import { Player, Bullet, Loot, WEAPONS, WeaponType, Explosion, Particle, Potion } from './Entities';
 import { Input } from './Input';
 
 export const GameState = {
@@ -36,6 +36,7 @@ export class Engine {
     private npcs: Player[] = [];
     private bullets: Bullet[] = [];
     private loot: Loot[] = [];
+    private potions: Potion[] = [];
     private explosions: Explosion[] = [];
     private particles: Particle[] = [];
     private input: Input;
@@ -77,6 +78,7 @@ export class Engine {
 
         // Initial Loot
         this.spawnLoot();
+        this.spawnPotions();
 
         // Initial NPCs
         this.spawnNPCs(15);
@@ -199,6 +201,15 @@ export class Engine {
         }
     }
 
+    private spawnPotions() {
+        for (let i = 0; i < 4; i++) {
+            const pos = this.findValidSpawnPosition([], 0);
+            if (pos) {
+                this.potions.push(new Potion(pos.x, pos.y));
+            }
+        }
+    }
+
     private spawnNPCs(count: number) {
         for (let i = 0; i < count; i++) {
             // Avoid existing NPCs and Player
@@ -255,10 +266,12 @@ export class Engine {
         this.npcs = [];
         this.bullets = [];
         this.loot = [];
+        this.potions = [];
         this.explosions = [];
         this.particles = [];
         this.spawnLoot();
         this.spawnLoot();
+        this.spawnPotions();
         this.spawnNPCs(15);
         this.gameStartTime = performance.now();
         this.gameEndTime = null;
@@ -482,6 +495,28 @@ export class Engine {
         });
         this.loot = this.loot.filter(l => l.active);
 
+        // Potions
+        this.potions.forEach(p => {
+            if (p.active) {
+                const dist = Math.sqrt((p.position.x - this.player.position.x) ** 2 + (p.position.y - this.player.position.y) ** 2);
+                if (dist < this.player.radius + p.radius) {
+                    // Consume Potion
+                    p.active = false;
+                    const healAmount = 50;
+                    const missingHealth = this.player.maxHealth - this.player.health;
+
+                    if (healAmount > missingHealth) {
+                        this.player.health = this.player.maxHealth;
+                        const overflow = healAmount - missingHealth;
+                        this.player.shield = Math.min(this.player.maxShield, this.player.shield + overflow);
+                    } else {
+                        this.player.health += healAmount;
+                    }
+                }
+            }
+        });
+        this.potions = this.potions.filter(p => p.active);
+
         // Particles
         this.particles.forEach(p => p.update(dt));
         this.particles = this.particles.filter(p => p.life > 0);
@@ -546,7 +581,7 @@ export class Engine {
     }
 
     private spawnBlood(x: number, y: number) {
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < 40; i++) {
             this.particles.push(new Particle(x, y, '#FF0000'));
         }
     }
@@ -573,6 +608,9 @@ export class Engine {
 
         // Loot
         this.loot.forEach(l => l.render(this.ctx, this.camera));
+
+        // Potions
+        this.potions.forEach(p => p.render(this.ctx, this.camera));
 
         // NPCs
         this.npcs.forEach(n => n.render(this.ctx, this.camera));
