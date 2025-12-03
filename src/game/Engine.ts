@@ -129,9 +129,14 @@ export class Engine {
     }
 
     public handleTouchShoot(clientX: number, clientY: number) {
-        // Calculate world position from screen tap (Account for Zoom)
-        const worldX = (clientX / this.zoom) + this.camera.x;
-        const worldY = (clientY / this.zoom) + this.camera.y;
+        // Calculate world position from screen tap (Account for Zoom and Canvas Offset)
+        const rect = this.canvas.getBoundingClientRect();
+        const canvasX = clientX - rect.left;
+        const canvasY = clientY - rect.top;
+
+        // Apply Zoom and Camera
+        const worldX = (canvasX / this.zoom) + this.camera.x;
+        const worldY = (canvasY / this.zoom) + this.camera.y;
 
         // Aim at tap
         const dx = worldX - this.player.position.x;
@@ -427,6 +432,7 @@ export class Engine {
                             npc.weapon = l.weapon;
                             npc.currentAmmo = WEAPONS[l.weapon].magSize;
                             npc.maxAmmo = WEAPONS[l.weapon].magSize;
+                            npc.weaponPickupTime = performance.now() / 1000; // Record pickup time
                             l.active = false;
                         }
                     }

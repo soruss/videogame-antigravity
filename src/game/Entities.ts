@@ -232,6 +232,7 @@ export class Player {
     public target: Vector2 | null = null;
     public path: Vector2[] = [];
     public pathTimer: number = 0;
+    public weaponPickupTime: number = 0; // Track when weapon was picked up
 
     constructor(x: number, y: number, isNPC: boolean = false) {
         this.position = { x, y };
@@ -267,6 +268,13 @@ export class Player {
                 this.moveTo(dt, nearestLoot.position, world);
             }
         } else if (this.aiState === 'FIGHTING') {
+            // Check 3-second delay
+            const now = performance.now() / 1000;
+            if (now - this.weaponPickupTime < 3.0) {
+                // Can't shoot yet, but can chase/aim
+                // Maybe just run away or strafe? For now, standard behavior but block shoot()
+            }
+
             // Find nearest target (Player or other NPC)
             let nearestTarget: Player | null = null;
             let minDist = Infinity;
@@ -290,8 +298,10 @@ export class Player {
                 this.rotation = Math.atan2(nearestTarget.position.y - this.position.y, nearestTarget.position.x - this.position.x);
 
                 if (dist < 400) {
-                    // Shoot
-                    return this.shoot();
+                    // Shoot (Only if delay passed)
+                    if (now - this.weaponPickupTime >= 3.0) {
+                        return this.shoot();
+                    }
                 } else {
                     // Chase
                     this.moveTo(dt, nearestTarget.position, world);
