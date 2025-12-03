@@ -91,8 +91,8 @@ const VirtualJoystick = ({ onMove }: { onMove: (x: number, y: number) => void })
       onMouseLeave={onMouseLeave}
       style={{ boxShadow: '0 0 30px rgba(255, 0, 0, 0.5)' }}
     >
-      <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-white font-black text-xs tracking-widest bg-black/50 px-2 py-1 rounded">
-        JOYSTICK V3
+      <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-white font-black text-xs tracking-widest bg-black/50 px-2 py-1 rounded whitespace-nowrap">
+        JOYSTICK V4 (CENTERED)
       </div>
       <div
         ref={stickRef}
@@ -307,7 +307,7 @@ function App() {
       {gameState !== GameState.GAME_OVER && (
         <>
           {/* Custom Virtual Joystick */}
-          <div className="fixed bottom-[25%] left-12 z-[9999]" style={{ pointerEvents: 'auto' }}>
+          <div className="fixed top-[50%] -translate-y-1/2 left-12 z-[9999]" style={{ pointerEvents: 'auto' }}>
             <VirtualJoystick onMove={(x, y) => engineRef.current?.setJoystick(x, y)} />
           </div>
 
@@ -317,7 +317,7 @@ function App() {
           </div>
 
           {/* Dash Button (Bottom Right) */}
-          <div className="fixed bottom-[25%] right-12 z-[9999]" style={{ pointerEvents: 'auto' }}>
+          <div className="fixed top-[50%] -translate-y-1/2 right-12 z-[9999]" style={{ pointerEvents: 'auto' }}>
             <button
               className={`w-24 h-24 rounded-full border-4 flex items-center justify-center transition-all active:scale-95 ${uiState?.dashReady ? 'bg-cyan-500/40 border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.6)]' : 'bg-gray-800/50 border-gray-600 opacity-50'}`}
               onTouchStart={(e) => { e.stopPropagation(); handleDash(); }}
