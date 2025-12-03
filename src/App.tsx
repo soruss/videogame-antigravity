@@ -170,23 +170,16 @@ function App() {
   };
 
   const handleCanvasTouch = (e: React.TouchEvent) => {
-    // Prevent default to stop scrolling/zooming
-    // e.preventDefault(); // Might block other interactions, test carefully
+    if (engineRef.current && e.changedTouches.length > 0) {
+      // Iterate through all changed touches
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
 
-    if (engineRef.current && e.touches.length > 0) {
-      // Use the first touch that isn't on the joystick/buttons (simplified: just use first touch)
-      // Ideally we filter out touches on UI controls, but for "Tap to Shoot", we can just use the touch coordinates.
-      // However, the joystick also triggers touches. We rely on the fact that the joystick captures its own events?
-      // Actually, tapping the screen anywhere (except controls) should shoot.
-      // Let's assume controls stop propagation or we check target.
-
-      // Simple implementation: Just pass the touch to engine. 
-      // If the user is using the joystick, that's a touch too.
-      // We need to differentiate.
-      // A simple way is to check if the target is the canvas.
-      if ((e.target as HTMLElement).tagName === 'CANVAS') {
-        const touch = e.touches[0];
-        engineRef.current.handleTouchShoot(touch.clientX, touch.clientY);
+        // Ensure the target is actually the canvas (and not a UI element bubbling up, though stopPropagation should handle that)
+        // We can also check if the touch started on the canvas.
+        if ((touch.target as HTMLElement).tagName === 'CANVAS') {
+          engineRef.current.handleTouchShoot(touch.clientX, touch.clientY);
+        }
       }
     }
   };

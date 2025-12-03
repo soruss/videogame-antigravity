@@ -42,6 +42,7 @@ export class Engine {
     private camera: { x: number, y: number } = { x: 0, y: 0 };
     private viewW: number;
     private viewH: number;
+    private zoom: number = 1; // Default Zoom
     private animationId: number | null = null;
 
     // Stopwatch
@@ -61,6 +62,7 @@ export class Engine {
         this.world = new World(50, 50); // 50x50 tiles
         this.viewW = this.canvas.width;
         this.viewH = this.canvas.height;
+        this.resize(); // Will overwrite with zoomed values
 
         // Spawn Player in Safe Zone
         this.player = new Player(5 * TILE_SIZE + TILE_SIZE / 2, 5 * TILE_SIZE + TILE_SIZE / 2);
@@ -152,8 +154,16 @@ export class Engine {
     private resize() {
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
-        this.viewW = this.canvas.width;
-        this.viewH = this.canvas.height;
+
+        // Mobile Zoom Logic (Zoom out 20% on small screens)
+        if (window.innerWidth < 768) {
+            this.zoom = 0.8;
+        } else {
+            this.zoom = 1;
+        }
+
+        this.viewW = this.canvas.width / this.zoom;
+        this.viewH = this.canvas.height / this.zoom;
     }
 
     private spawnLoot() {
@@ -506,6 +516,8 @@ export class Engine {
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
         this.ctx.save();
+        // Apply Zoom
+        this.ctx.scale(this.zoom, this.zoom);
         // Camera Transform
         this.ctx.translate(-this.camera.x, -this.camera.y);
 
