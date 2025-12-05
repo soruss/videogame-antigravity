@@ -528,3 +528,53 @@ body {
 canvas {
   display: block;
 }
+
+/* Kill Banner Animations */
+@keyframes kill-pop {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes kill-ring-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes kill-ring-spin-reverse {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(-360deg);
+  }
+}
+
+.animate-kill-pop {
+  animation: kill-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.animate-spin-slow {
+  animation: kill-ring-spin 4s linear infinite;
+}
+
+.animate-spin-reverse {
+  animation: kill-ring-spin-reverse 4s linear infinite;
+}

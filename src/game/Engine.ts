@@ -56,6 +56,9 @@ export class Engine {
 
     public onGameStateChange?: (state: GameState) => void;
     public onWinner?: (winner: string) => void;
+    public onKill?: () => void; // Kill Callback
+
+    private audioCtx: AudioContext | null = null;
 
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
@@ -599,6 +602,11 @@ export class Engine {
             // CHECK: dealer === this.player
             if (entity.isNPC && !this.player.isDead && !entity.siphoned && dealer === this.player) {
                 entity.siphoned = true;
+
+                // Trigger Kill Event
+                if (this.onKill) this.onKill();
+                this.playKillSound();
+
                 const healAmount = 30;
                 const missingHealth = this.player.maxHealth - this.player.health;
 
@@ -641,6 +649,64 @@ export class Engine {
     private spawnDashParticles(player: Player) {
         for (let i = 0; i < 10; i++) {
             this.particles.push(new Particle(player.position.x, player.position.y, '#FFFFFF'));
+        }
+    }
+
+    private playKillSound() {
+        try {
+            if (!this.audioCtx) {
+                this.audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            }
+            if (this.audioCtx.state === 'suspended') {
+                this.audioCtx.resume();
+            }
+
+            const t = this.audioCtx.currentTime;
+
+            // 1. High Pitch "Ding" (Satisfaction)
+            const osc1 = this.audioCtx.createOscillator();
+            const gain1 = this.audioCtx.createGain();
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(880, t); // A5
+            osc1.frequency.exponentialRampToValueAtTime(1760, t + 0.1); // Slide up
+            gain1.gain.setValueAtTime(0.3, t);
+            gain1.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+            osc1.connect(gain1);
+            gain1.connect(this.audioCtx.destination);
+            osc1.start(t);
+            osc1.stop(t + 0.3);
+
+            // 2. Bass "Thud" (Impact)
+            const osc2 = this.audioCtx.createOscillator();
+            const gain2 = this.audioCtx.createGain();
+            osc2.type = 'triangle';
+            osc2.frequency.setValueAtTime(100, t);
+            osc2.frequency.exponentialRampToValueAtTime(0.01, t + 0.2); // Drop fast
+            gain2.gain.setValueAtTime(0.5, t);
+            gain2.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+            osc2.connect(gain2);
+            gain2.connect(this.audioCtx.destination);
+            osc2.start(t);
+            osc2.stop(t + 0.2);
+
+            // 3. Noise "Crunch" (Texture)
+            const bufferSize = this.audioCtx.sampleRate * 0.1; // 0.1s
+            const buffer = this.audioCtx.createBuffer(1, bufferSize, this.audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+            const noise = this.audioCtx.createBufferSource();
+            noise.buffer = buffer;
+            const noiseGain = this.audioCtx.createGain();
+            noiseGain.gain.setValueAtTime(0.2, t);
+            noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+            noise.connect(noiseGain);
+            noiseGain.connect(this.audioCtx.destination);
+            noise.start(t);
+
+        } catch (e) {
+            console.error("Audio Error:", e);
         }
     }
 

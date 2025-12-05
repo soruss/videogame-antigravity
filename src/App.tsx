@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Engine, GameState } from './game/Engine';
 import type { UIState } from './game/Engine';
 import './index.css';
+import { KillBanner } from './components/KillBanner';
 
 import { Analytics } from "@vercel/analytics/react"
 
@@ -112,6 +113,7 @@ function App() {
   const requestRef = useRef<number>(0);
 
   const [error, setError] = useState<string | null>(null);
+  const [showKillBanner, setShowKillBanner] = useState(false);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -125,6 +127,12 @@ function App() {
       };
       engineRef.current.onWinner = (winner) => {
         setWinnerText(winner);
+      };
+
+      // Bind Kill Event
+      engineRef.current.onKill = () => {
+        setShowKillBanner(true);
+        setTimeout(() => setShowKillBanner(false), 2500);
       };
 
       // UI Update Loop
@@ -433,6 +441,8 @@ function App() {
           </span>
         </div>
       </div>
+
+      <KillBanner active={showKillBanner} />
     </div>
   );
 }
