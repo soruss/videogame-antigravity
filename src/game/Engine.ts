@@ -360,6 +360,7 @@ export class Engine {
             const newBullets = this.player.shoot();
             if (newBullets) {
                 this.bullets.push(...newBullets);
+                if (this.player.weapon) this.playShootSound(this.player.weapon, false, this.player.position);
             }
         }
 
@@ -383,6 +384,7 @@ export class Engine {
             const newBullets = this.player.shoot();
             if (newBullets) {
                 this.bullets.push(...newBullets);
+                if (this.player.weapon) this.playShootSound(this.player.weapon, false, this.player.position);
             }
         }
 
@@ -393,6 +395,7 @@ export class Engine {
             const newBullets = npc.updateAI(dt, this.world, this.loot, allPlayers, this.isMobile, this.potions);
             if (newBullets) {
                 this.bullets.push(...newBullets);
+                if (npc.weapon) this.playShootSound(npc.weapon, true, npc.position);
             }
 
             npc.update(dt, this.world);
@@ -427,7 +430,10 @@ export class Engine {
                 if (dist < this.player.radius + b.radius) {
                     b.active = false;
                     this.damageEntity(this.player, b.damage, b.owner);
-                    if (b.isRocket) this.explosions.push(new Explosion(b.position.x, b.position.y, b.owner));
+                    if (b.isRocket) {
+                        this.explosions.push(new Explosion(b.position.x, b.position.y, b.owner));
+                        this.playExplosionSound(b.position);
+                    }
                 }
             }
 
@@ -438,7 +444,10 @@ export class Engine {
                     if (dist < npc.radius + b.radius) {
                         b.active = false;
                         this.damageEntity(npc, b.damage, b.owner);
-                        if (b.isRocket) this.explosions.push(new Explosion(b.position.x, b.position.y, b.owner));
+                        if (b.isRocket) {
+                            this.explosions.push(new Explosion(b.position.x, b.position.y, b.owner));
+                            this.playExplosionSound(b.position);
+                        }
                     }
                 }
             });
@@ -567,7 +576,10 @@ export class Engine {
 
         // Check Victory
         if (this.npcs.length === 0 && !this.player.isDead) {
-            if (!this.gameEndTime) this.gameEndTime = performance.now();
+            if (!this.gameEndTime) {
+                this.gameEndTime = performance.now();
+                this.playVictorySound();
+            }
             if (this.onWinner) this.onWinner('Player');
             if (this.onGameStateChange) this.onGameStateChange(GameState.GAME_OVER);
         }
@@ -619,7 +631,10 @@ export class Engine {
                 }
             } else if (!entity.isNPC) {
                 // Player Died
-                if (!this.gameEndTime) this.gameEndTime = performance.now();
+                if (!this.gameEndTime) {
+                    this.gameEndTime = performance.now();
+                    this.playDeathSound();
+                }
                 if (this.onGameStateChange) this.onGameStateChange(GameState.GAME_OVER);
                 if (this.onWinner) this.onWinner('GAME OVER');
             }
@@ -653,6 +668,41 @@ export class Engine {
     }
 
     private playKillSound() {
+        this.playSound('kill');
+    }
+
+    private playShootSound(weapon: WeaponType, isNPC: boolean, position: { x: number, y: number }) {
+        // Distance Falloff
+        let volume = 0.3;
+        if (isNPC) {
+            const dist = Math.sqrt((position.x - this.player.position.x) ** 2 + (position.y - this.player.position.y) ** 2);
+            const maxDist = 10 * TILE_SIZE; // 10 blocks
+            if (dist > maxDist) return; // Too far
+            volume = 0.15 * (1 - dist / maxDist); // 50% quieter + falloff
+        }
+
+        this.playSound('shoot', { weapon, volume });
+    }
+
+    private playExplosionSound(position: { x: number, y: number }) {
+        const dist = Math.sqrt((position.x - this.player.position.x) ** 2 + (position.y - this.player.position.y) ** 2);
+        const maxDist = 20 * TILE_SIZE;
+        let volume = 0.5;
+        if (dist > maxDist) return;
+        volume = 0.5 * (1 - dist / maxDist);
+
+        this.playSound('explosion', { volume });
+    }
+
+    private playDeathSound() {
+        this.playSound('death');
+    }
+
+    private playVictorySound() {
+        this.playSound('victory');
+    }
+
+    private playSound(type: 'kill' | 'shoot' | 'explosion' | 'death' | 'victory', params?: any) {
         try {
             if (!this.audioCtx) {
                 this.audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -662,48 +712,146 @@ export class Engine {
             }
 
             const t = this.audioCtx.currentTime;
+            const vol = params?.volume ?? 0.3;
 
-            // 1. High Pitch "Ding" (Satisfaction)
-            const osc1 = this.audioCtx.createOscillator();
-            const gain1 = this.audioCtx.createGain();
-            osc1.type = 'sine';
-            osc1.frequency.setValueAtTime(880, t); // A5
-            osc1.frequency.exponentialRampToValueAtTime(1760, t + 0.1); // Slide up
-            gain1.gain.setValueAtTime(0.3, t);
-            gain1.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
-            osc1.connect(gain1);
-            gain1.connect(this.audioCtx.destination);
-            osc1.start(t);
-            osc1.stop(t + 0.3);
+            if (type === 'kill') {
+                // 1. High Pitch "Ding" (Satisfaction)
+                const osc1 = this.audioCtx.createOscillator();
+                const gain1 = this.audioCtx.createGain();
+                osc1.type = 'sine';
+                osc1.frequency.setValueAtTime(880, t); // A5
+                osc1.frequency.exponentialRampToValueAtTime(1760, t + 0.1); // Slide up
+                gain1.gain.setValueAtTime(0.3, t);
+                gain1.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+                osc1.connect(gain1);
+                gain1.connect(this.audioCtx.destination);
+                osc1.start(t);
+                osc1.stop(t + 0.3);
 
-            // 2. Bass "Thud" (Impact)
-            const osc2 = this.audioCtx.createOscillator();
-            const gain2 = this.audioCtx.createGain();
-            osc2.type = 'triangle';
-            osc2.frequency.setValueAtTime(100, t);
-            osc2.frequency.exponentialRampToValueAtTime(0.01, t + 0.2); // Drop fast
-            gain2.gain.setValueAtTime(0.5, t);
-            gain2.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
-            osc2.connect(gain2);
-            gain2.connect(this.audioCtx.destination);
-            osc2.start(t);
-            osc2.stop(t + 0.2);
+                // 2. Bass "Thud" (Impact)
+                const osc2 = this.audioCtx.createOscillator();
+                const gain2 = this.audioCtx.createGain();
+                osc2.type = 'triangle';
+                osc2.frequency.setValueAtTime(100, t);
+                osc2.frequency.exponentialRampToValueAtTime(0.01, t + 0.2); // Drop fast
+                gain2.gain.setValueAtTime(0.5, t);
+                gain2.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+                osc2.connect(gain2);
+                gain2.connect(this.audioCtx.destination);
+                osc2.start(t);
+                osc2.stop(t + 0.2);
+            } else if (type === 'shoot') {
+                const weapon = params.weapon as WeaponType;
 
-            // 3. Noise "Crunch" (Texture)
-            const bufferSize = this.audioCtx.sampleRate * 0.1; // 0.1s
-            const buffer = this.audioCtx.createBuffer(1, bufferSize, this.audioCtx.sampleRate);
-            const data = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) {
-                data[i] = Math.random() * 2 - 1;
+                // Noise Burst (Gunshot)
+                const bufferSize = this.audioCtx.sampleRate * 0.1;
+                const buffer = this.audioCtx.createBuffer(1, bufferSize, this.audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noise = this.audioCtx.createBufferSource();
+                noise.buffer = buffer;
+
+                // Filter based on weapon
+                const filter = this.audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+
+                // Pitch/Tone based on weapon
+                const osc = this.audioCtx.createOscillator();
+                osc.type = 'sawtooth';
+
+                if (weapon === WeaponType.Sniper) {
+                    filter.frequency.value = 800;
+                    osc.frequency.value = 150;
+                } else if (weapon === WeaponType.Shotgun) {
+                    filter.frequency.value = 500;
+                    osc.frequency.value = 80;
+                } else if (weapon === WeaponType.SMG) {
+                    filter.frequency.value = 1200;
+                    osc.frequency.value = 400;
+                } else if (weapon === WeaponType.RocketLauncher) {
+                    // Rocket Launch "Whoosh"
+                    filter.frequency.value = 400;
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(200, t);
+                    osc.frequency.linearRampToValueAtTime(50, t + 0.5);
+                } else {
+                    // AR
+                    filter.frequency.value = 1000;
+                    osc.frequency.value = 300;
+                }
+
+                const gain = this.audioCtx.createGain();
+                gain.gain.setValueAtTime(vol, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
+
+                noise.connect(filter);
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.audioCtx.destination);
+
+                noise.start(t);
+                osc.start(t);
+                osc.stop(t + 0.15);
+
+            } else if (type === 'explosion') {
+                // Boom
+                const osc = this.audioCtx.createOscillator();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(100, t);
+                osc.frequency.exponentialRampToValueAtTime(0.01, t + 0.5);
+
+                const gain = this.audioCtx.createGain();
+                gain.gain.setValueAtTime(vol, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
+
+                const filter = this.audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(500, t);
+                filter.frequency.linearRampToValueAtTime(0, t + 0.5);
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.audioCtx.destination);
+                osc.start(t);
+                osc.stop(t + 0.5);
+
+            } else if (type === 'death') {
+                // Low Thud
+                const osc = this.audioCtx.createOscillator();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(150, t);
+                osc.frequency.exponentialRampToValueAtTime(0.01, t + 0.5);
+
+                const gain = this.audioCtx.createGain();
+                gain.gain.setValueAtTime(0.5, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
+
+                osc.connect(gain);
+                gain.connect(this.audioCtx.destination);
+                osc.start(t);
+                osc.stop(t + 0.5);
+
+            } else if (type === 'victory') {
+                // Fanfare (C Major Arpeggio)
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                notes.forEach((freq, i) => {
+                    const osc = this.audioCtx!.createOscillator();
+                    const gain = this.audioCtx!.createGain();
+                    osc.type = 'square';
+                    osc.frequency.value = freq;
+
+                    const startTime = t + i * 0.15;
+                    gain.gain.setValueAtTime(0.2, startTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.4);
+
+                    osc.connect(gain);
+                    gain.connect(this.audioCtx!.destination);
+                    osc.start(startTime);
+                    osc.stop(startTime + 0.4);
+                });
             }
-            const noise = this.audioCtx.createBufferSource();
-            noise.buffer = buffer;
-            const noiseGain = this.audioCtx.createGain();
-            noiseGain.gain.setValueAtTime(0.2, t);
-            noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
-            noise.connect(noiseGain);
-            noiseGain.connect(this.audioCtx.destination);
-            noise.start(t);
 
         } catch (e) {
             console.error("Audio Error:", e);
