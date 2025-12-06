@@ -12,6 +12,8 @@ export const KillBanner: React.FC<KillBannerProps> = ({ active }) => {
             setVisible(true);
             const timer = setTimeout(() => setVisible(false), 2000); // Hide after 2s
             return () => clearTimeout(timer);
+        } else {
+            setVisible(false);
         }
     }, [active]);
 
