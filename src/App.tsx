@@ -4,7 +4,7 @@ import type { UIState } from './game/Engine';
 import './index.css';
 import { KillBanner } from './components/KillBanner';
 
-import { Analytics } from "@vercel/analytics/react"
+
 
 // import { Joystick } from 'react-joystick-component';
 
@@ -225,7 +225,6 @@ function App() {
 
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden font-sans select-none touch-none">
-      <Analytics />
       <canvas
         ref={canvasRef}
         className="block w-full h-full"
