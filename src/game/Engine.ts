@@ -58,7 +58,10 @@ export class Engine {
     public onWinner?: (winner: string) => void;
     public onKill?: () => void; // Kill Callback
 
+
+
     private audioCtx: AudioContext | null = null;
+    private lastFootstepTime: number = 0;
 
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
@@ -354,6 +357,13 @@ export class Engine {
         this.camera.x = this.player.position.x - this.viewW / 2;
         this.camera.y = this.player.position.y - this.viewH / 2;
 
+        // Footsteps
+        const speed = Math.sqrt(this.player.velocity.x ** 2 + this.player.velocity.y ** 2);
+        if (speed > 10 && performance.now() - this.lastFootstepTime > 350) {
+            this.playFootstepSound();
+            this.lastFootstepTime = performance.now();
+        }
+
         // Player Shooting
         // Player Shooting
         if (this.input.mouseDown) {
@@ -643,6 +653,7 @@ export class Engine {
 
     private consumePotion(entity: Player, potion: Potion) {
         potion.active = false;
+        this.playPotionSound();
         const healAmount = 50;
         const missingHealth = entity.maxHealth - entity.health;
 
@@ -702,7 +713,15 @@ export class Engine {
         this.playSound('victory');
     }
 
-    private playSound(type: 'kill' | 'shoot' | 'explosion' | 'death' | 'victory', params?: any) {
+    private playFootstepSound() {
+        this.playSound('footstep');
+    }
+
+    private playPotionSound() {
+        this.playSound('potion');
+    }
+
+    private playSound(type: 'kill' | 'shoot' | 'explosion' | 'death' | 'victory' | 'footstep' | 'potion', params?: any) {
         try {
             if (!this.audioCtx) {
                 this.audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -740,6 +759,52 @@ export class Engine {
                 gain2.connect(this.audioCtx.destination);
                 osc2.start(t);
                 osc2.stop(t + 0.2);
+            } else if (type === 'footstep') {
+                // Short Noise Burst (Filtered)
+                const bufferSize = this.audioCtx.sampleRate * 0.05; // 50ms
+                const buffer = this.audioCtx.createBuffer(1, bufferSize, this.audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noise = this.audioCtx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = this.audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 400; // Muffled step
+
+                const gain = this.audioCtx.createGain();
+                gain.gain.setValueAtTime(0.1, t); // Quiet
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.05);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.audioCtx.destination);
+                noise.start(t);
+
+            } else if (type === 'potion') {
+                // Slurp (Filter Sweep)
+                const osc = this.audioCtx.createOscillator();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(300, t);
+
+                const filter = this.audioCtx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.Q.value = 10;
+                filter.frequency.setValueAtTime(400, t);
+                filter.frequency.linearRampToValueAtTime(2000, t + 0.5); // Sweep up
+
+                const gain = this.audioCtx.createGain();
+                gain.gain.setValueAtTime(0.3, t);
+                gain.gain.linearRampToValueAtTime(0, t + 0.5);
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.audioCtx.destination);
+                osc.start(t);
+                osc.stop(t + 0.5);
+
             } else if (type === 'shoot') {
                 const weapon = params.weapon as WeaponType;
 
