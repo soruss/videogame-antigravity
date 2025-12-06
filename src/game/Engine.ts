@@ -775,7 +775,7 @@ export class Engine {
                 filter.frequency.value = 400; // Muffled step
 
                 const gain = this.audioCtx.createGain();
-                gain.gain.setValueAtTime(0.1, t); // Quiet
+                gain.gain.setValueAtTime(0.4, t); // Louder (was 0.1)
                 gain.gain.exponentialRampToValueAtTime(0.01, t + 0.05);
 
                 noise.connect(filter);

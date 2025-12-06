@@ -124,6 +124,7 @@ function App() {
 
       engineRef.current.onGameStateChange = (newState) => {
         setGameState(newState);
+        setShowKillBanner(false); // Reset kill banner on restart/game over
       };
       engineRef.current.onWinner = (winner) => {
         setWinnerText(winner);
